@@ -27,7 +27,7 @@ set(PACKAGE_INCLUDE_DEPENDS
     behaviortree_ros2
 )
 
-# 定义宏函数 add_target_dependencies
+# Helper: add_target_dependencies
 function(add_target_dependencies target)
     target_include_directories(${target} PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
     ament_target_dependencies(${target} ${PACKAGE_INCLUDE_DEPENDS})

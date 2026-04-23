@@ -1,48 +1,48 @@
 NYUSH sentry communication commands
-最后更新：2026-04-11
+Last updated: 2026-04-11
 
-详细原理、参数含义、数据流、脚本与 BT/视觉/导航/通讯对照表见：
-  README_COMMANDS.md  （仓库根目录，优先阅读）
-实机分阶段联调、终端分工、伪造裁判、检查清单：README_COMMANDS.md §12
+Theory, parameters, data flow, and script cross-reference tables: see
+  README_COMMANDS.md  (repo root — read this first)
+Hardware phased bring-up, terminal roles, mock referee, checklists: README_COMMANDS.md §12
 
-下面「当前这一次 bridge 输出」仅为示例；USB 插拔后设备名会变，请以当次终端打印为准。
+The “current bridge output” below is an example; after USB re-plug device names change — use what your bridge prints.
 -----------------------
-MCU serial : /dev/ttyACM0   # 示例：也可能是 ttyACM1 等
+MCU serial : /dev/ttyACM0   # example: may be ttyACM1, etc.
 Vision PTY : /dev/pts/2
 Radar PTY  : /dev/pts/3
 
-注意
-----
-1. 真实 USB 口只能给 sentry_bridge.py 占用；设备名不要写死，启动 bridge 时用自动选口（见 §1.2）。
-2. 视觉程序连 Vision PTY；雷达/导航程序连 Radar PTY（或稳定软链接 /tmp/nyush-rm-sentry-radar）。
-3. bridge 每次重启，/dev/pts/N 都可能变化；每次都以 bridge 当次打印结果为准。
-4. 建议先把车架空，再做 one-shot / keyboard 测试。
-5. 当前默认已进入“只用 vx vy”调试模式：Nav2 自带 `wz` 默认会被忽略。
+Notes
+-----
+1. Only `sentry_bridge.py` may use the real USB port; do not hardcode names — use auto port when starting the bridge (see §1.2).
+2. Vision uses Vision PTY; radar/navigation uses Radar PTY (or stable symlink /tmp/nyush-rm-sentry-radar).
+3. After each bridge restart, /dev/pts/N may change; always use the latest bridge printout.
+4. Jack up the robot before one-shot / keyboard tests.
+5. Default debug mode is “vx/vy only”: Nav2 `wz` is ignored.
 
 
-0. 仓库命令归属
-===============
+0. Which repo runs which commands
+=================================
 
-0.1 下位机电控仓库执行
-----------------------
+0.1 MCU / nyush-rm-control
+--------------------------
 cd /home/nyu/Codespace/nyush-rm-control
 
 just bridge
 just sentry-bridge
-# 推荐不写 --port：sentry_bridge 会自动枚举并选择 MCU 串口（插拔后可能是 ttyACM1 等）
-# 仅当多设备冲突时再： just sentry-bridge --port /dev/ttyACM1
+# Prefer omitting --port: sentry_bridge auto-picks the MCU serial (after replug it may be ttyACM1)
+# Only if multiple devices conflict: just sentry-bridge --port /dev/ttyACM1
 just logger
 just logger-cli
 just vision --port /dev/pts/2
 
-0.2 视觉仓库执行
-----------------
+0.2 nyush-rm-vision
+-------------------
 cd /home/nyu/Codespace/nyush-rm-vision
 
 just test detect --web --send
 just test gimbal configs/sentry.yaml
 
-0.2.1 一键自瞄模式
+0.2.1 One-shot auto-aim mode
 Specifically, in:
 
 /home/nyu/Codespace/nyush-rm-vision/configs/sentry.yaml
@@ -59,14 +59,14 @@ bash /home/nyu/sentry_planner/scripts/autostart_autoaim.sh
 cd /home/nyu/sentry_planner
 ./start_autoaim_mode.sh
 
-说明：
-- 现在 `start_autoaim_mode.sh` 默认会自动补起 `serial_sender.py`
-- 也就是通常只需要 2 个终端：
+Notes:
+- `start_autoaim_mode.sh` now auto-starts `serial_sender.py` by default
+- Usually you only need two terminals:
   1. bridge
   2. `./start_autoaim_mode.sh`
-- 如果你坚持手动起 sender，也仍然可以
+- You can still start `serial_sender` manually if you prefer
 
-手动 sender 版本：
+Manual `serial_sender` variant:
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/install/setup.zsh
 python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
@@ -76,184 +76,184 @@ python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
   --robot-control-topic /robot_control
 
 
-常用可调参数：
-- `AUTOAIM_MODE=autoaim`：视觉接管 + 丢目标回搜索
-- `AUTOAIM_MODE=scan`：纯扫描，不允许视觉接管
-- `START_VISION=0`：只发 `/robot_control`，不启动 `detect --web --send`
-- `AUTO_START_SERIAL_SENDER=0`：关闭自动补起 sender
+Common tunables:
+- `AUTOAIM_MODE=autoaim` — vision takeover + search when target lost
+- `AUTOAIM_MODE=scan` — scan only, no vision takeover
+- `START_VISION=0` — only publish `/robot_control`, do not run `detect --web --send`
+- `AUTO_START_SERIAL_SENDER=0` — disable auto sender
 - `AUTOAIM_SCAN_YAW_RATE_DEG_S=120.0`
 - `AUTOAIM_SEARCH_PITCH_DEG=-6.0`
 
-0.3 常见报错含义
-----------------
-如果你在 `nyush-rm-vision` 里跑：
+0.3 Common “wrong recipe” errors
+--------------------------------
+If you run in `nyush-rm-vision`:
 
 just logger
 
-或者在 `nyush-rm-control` 里跑：
+Or in `nyush-rm-control`:
 
 just test detect --web --send
 
-看到：
+and see:
 
 error: Justfile does not contain recipe `logger`
 error: Justfile does not contain recipe `test`
 
-这通常不是命令错了，而是仓库跑错了。
+the command is usually fine — you are in the wrong repository.
 
 
-1. 桥接脚本
-===========
+1. Bridge
+=========
 
-1.1 协议自检
-------------
+1.1 Protocol self-test
+----------------------
 python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --self-test
 
-1.2 启动 bridge（自动选口，推荐）
----------------------------------
+1.2 Start bridge (auto port — recommended)
+--------------------------------------------
 cd /home/nyu/Codespace/nyush-rm-control
 python3 scripts/sentry_bridge.py
-# 或
+# or
 just sentry-bridge
 
-1.3 just 别名写法
------------------
+1.3 just aliases
+----------------
 cd /home/nyu/Codespace/nyush-rm-control
 just sentry-bridge --self-test
 just sentry-bridge
 
-1.4 查看是谁占用了真实串口
----------------------------
+1.4 Who holds the real serial port
+----------------------------------
 lsof /dev/ttyACM0
 
-1.5 下位机 web dashboard
-------------------------
+1.5 MCU web dashboard
+---------------------
 cd /home/nyu/Codespace/nyush-rm-control
 just logger
 
-浏览器打开：
+Open in browser:
 http://127.0.0.1:8080
 
-说明：
-- 这是下位机 RTT dashboard
-- 这条命令只能在 `nyush-rm-control` 仓库里执行
+Notes:
+- MCU RTT dashboard
+- Run only inside the `nyush-rm-control` repo
 
 
-2. Radar PTY 常用测试
-=====================
+2. Radar PTY quick tests
+========================
 
-当前这次启动请使用：
+Use for this session:
 Radar PTY = /dev/pts/3
 
-2.1 官方雷达 mock 工具
-----------------------
+2.1 Official radar mock tool
+------------------------------
 python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_radar_tool.py --port /dev/pts/3
 
-2.2 just 别名写法
------------------
+2.2 just alias
+--------------
 cd /home/nyu/Codespace/nyush-rm-control
 just radar --port /dev/pts/3
 
-2.3 serial_sender 单次发速度
-----------------------------
+2.3 serial_sender one-shot velocity
+------------------------------------
 python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port /dev/pts/3 --vx 0.10 --vy 0.00 --wz 0.00 --duration 1.0
 
-2.4 serial_sender 键盘控底盘
-----------------------------
+2.4 serial_sender keyboard chassis
+------------------------------------
 source /opt/ros/humble/setup.zsh
 python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port /dev/pts/14 --keyboard --speed 0.3
 
-键位：
-W/S 前后
-A/D 左右
-Q/E 旋转
-SPACE 急停
-ESC 退出
+Keys:
+W/S forward/back
+A/D strafe
+Q/E rotate
+SPACE e-stop
+ESC quit
 
-2.5 启动行为树通讯适配层
-------------------------
+2.5 Start behavior-tree comm adapter
+------------------------------------
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/rm_vision_ws/install/setup.zsh
 source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
 python3 /home/nyu/sentry_planner/scripts/bt_comm_adapter.py
 
-2.6 serial_sender 监听适配后的行为树底盘话题
-------------------------------------------
+2.6 serial_sender on adapted BT chassis topic
+---------------------------------------------
 source /opt/ros/humble/setup.zsh
 python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port /dev/pts/3 --ros2 --topic /cmd_vel_chassis_bt
 
-说明：
-- 这条命令现在会同时监听 `/cmd_vel_chassis_bt` 和 `/robot_control`
-- `/robot_control` 里的 `scan_enabled / allow_vision_control / search_when_target_lost / scan_yaw_rate_deg_s / search_pitch_deg` 会经新版 `A3` 功能帧一起发给 bridge
-- 同一个 `serial_sender.py --ros2` 进程还会把 bridge 回来的真实裁判系统状态发布成 `/game_status` 和 `/robot_status`
-- `stop_gimbal_scan` 仍兼容，但已经不是唯一控制量
+Notes:
+- This listens to both `/cmd_vel_chassis_bt` and `/robot_control`
+- `scan_enabled / allow_vision_control / search_when_target_lost / scan_yaw_rate_deg_s / search_pitch_deg` go to the bridge in the new `A3` feature frame
+- The same `serial_sender.py --ros2` process republishes referee data from the bridge as `/game_status` and `/robot_status`
+- `stop_gimbal_scan` still works but is not the only control anymore
 
-2.7 手工发一条 ROS2 速度做验证
-------------------------------
+2.7 Manual ROS 2 velocity sanity check
+--------------------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic pub /cmd_vel_chassis geometry_msgs/msg/Twist "{linear: {x: 0.10, y: 0.00, z: 0.00}, angular: {x: 0.00, y: 0.00, z: 0.00}}" -1
 
-2.8 看看适配后的实际发送话题
-----------------------------
+2.8 Echo adapted output topic
+-----------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic echo /cmd_vel_chassis_bt
 
-2.9 如果你就是想监听原始 Nav2 输出
-----------------------------------
+2.9 Raw Nav2 output (if you need it)
+------------------------------------
 source /opt/ros/humble/setup.zsh
 python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port /dev/pts/3 --ros2 --topic /cmd_vel
 
 
-3. Vision PTY 常用测试
-======================
+3. Vision PTY quick tests
+=========================
 
-当前这次启动请使用：
+Use for this session:
 Vision PTY = /dev/pts/2
 
-3.1 SP 协议交互工具
--------------------
+3.1 SP protocol tool
+--------------------
 python3 /home/nyu/Codespace/nyush-rm-control/scripts/vision_tool.py --port /dev/pts/2
 
-3.2 just 别名写法
------------------
+3.2 just alias
+--------------
 cd /home/nyu/Codespace/nyush-rm-control
 just vision --port /dev/pts/2
 
-3.3 查看 sentry 配置里的串口项
-------------------------------
+3.3 Inspect `com_port` in sentry config
+----------------------------------------
 sed -n '90,100p' /home/nyu/Codespace/nyush-rm-vision/configs/sentry.yaml
 
-3.4 如果你明确要跑视觉主程序，com_port 应改成当前 Vision PTY
---------------------------------------------------------------
-# 例如当前这次应写成：
+3.4 Full vision app: point com_port at Vision PTY
+-------------------------------------------------
+# Example for this session:
 com_port: "/dev/pts/2"
 
-3.5 可选：编译视觉主程序
-------------------------
+3.5 Optional: build vision app
+-------------------------------
 cd /home/nyu/Codespace/nyush-rm-vision
 just build
 
-3.6 可选：运行视觉主程序（不是当前主线默认）
----------------------------------------------
+3.6 Optional: run full vision binary (not default mainline)
+-----------------------------------------------------------
 cd /home/nyu/Codespace/nyush-rm-vision
 ./build/sentry configs/sentry.yaml
 
-3.7 当前主线自瞄联调命令
-------------------------
+3.7 Mainline auto-aim bring-up
+-------------------------------
 cd /home/nyu/Codespace/nyush-rm-vision
 just test detect --web --send
 
-说明：
-- 这条命令才是你们现在实机联调的主线
-- 这条命令只能在 `nyush-rm-vision` 仓库里执行
-- 默认视觉网页端口按当前 vision justfile 是 `http://127.0.0.1:8888`
-- 下位机 dashboard 仍然是 `http://127.0.0.1:8080`
-- 真正启用自瞄时，遥控器左边开关拨到中间
-- 如果仓库里没有 `./build/sentry`，不要纠结，先直接跑 `just test detect --web --send`
+Notes:
+- Primary command for current hardware auto-aim bring-up
+- Run only in `nyush-rm-vision`
+- Web UI per vision justfile: `http://127.0.0.1:8888`
+- MCU dashboard: `http://127.0.0.1:8080`
+- For real auto-aim, set the left RC switch to center
+- If `./build/sentry` is missing, use `just test detect --web --send` directly
 
 
-4. Planner / Nav2 侧联调
-========================
+4. Planner / Nav2 side
+======================
 systemctl --user daemon-reload
 systemctl --user enable sentry_autostart.service
 systemctl --user start sentry_autostart.service
@@ -265,41 +265,41 @@ tail -f /home/nyu/sentry_planner/logs/autostart/sentry_bridge.log
 tail -f /home/nyu/sentry_planner/logs/autostart/vision_detect.log
 tail -f /home/nyu/sentry_planner/logs/autostart/nav_bt.log
 
-4.0 下面各段在 README_COMMANDS.md 中的章节
-------------------------------------------
-- bridge 自动选口、勿写死 ttyACM0        -> README_COMMANDS.md §2
-- 视觉 detect --web --send 与 BT 关系    -> §3
-- nav_ws/start_robot.sh 一长串环境变量  -> §4
-- ros2 topic echo game/robot_status     -> §5
-- watch_center_attack / bt_hotkey_debug -> §6
-- rotate_pcd / pcd2pgm / map_saver_cli  -> §7
-- autostart_fullstack.sh                -> §8
-- 脚本与 BT/视觉/导航/通讯对照表        -> §9
+4.0 README_COMMANDS.md cross-reference
+--------------------------------------
+- Auto port, do not hardcode ttyACM0     -> README_COMMANDS.md §2
+- Vision `detect --web --send` vs BT     -> §3
+- `nav_ws/start_robot.sh` env vars       -> §4
+- `ros2 topic echo` game/robot         -> §5
+- watch_center_attack / bt_hotkey_debug  -> §6
+- rotate_pcd / pcd2pgm / map_saver_cli   -> §7
+- autostart_fullstack.sh                 -> §8
+- Script cross-reference table           -> §9
 
-阶段 2：上真实桥接、真实裁判、真实运动
-终端 1，桥：
+Phase 2: real bridge, real referee, real motion
+Terminal 1 — bridge:
 cd /home/nyu/Codespace/nyush-rm-control
 just sentry-bridge 
 
 cd /home/nyu/Codespace/nyush-rm-control
 just radar --port /tmp/nyush-rm-sentry-radar
 
-终端 2，视觉，可先不开；如果要联动视觉再开：
+Terminal 2 — vision (optional until you need it):
 cd /home/nyu/Codespace/nyush-rm-vision
 just test detect --web --send
-# --web 默认 http://127.0.0.1:8888 看检测；--send 经 Vision PTY 发 SP 到 MCU。
-# 与 BT：BT 经 RobotControl/SX 控扫描/自瞄开关；简单树可不订阅 /detector/armors。详见 README_COMMANDS §3。
+# --web default http://127.0.0.1:8888 for view; --send SP to MCU via Vision PTY.
+# BT: RobotControl/SX for scan/aim modes; simple trees may omit /detector/armors. See README_COMMANDS §3.
 
-终端 3，主入口，起 Nav2 + adapter + BT(center_attack_fullstack) + serial_sender：
+Terminal 3 — main: Nav2 + adapter + BT (center_attack_fullstack) + serial_sender:
 cd /home/nyu/sentry_planner
 ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 
 cd /home/nyu/nav_ws
 ./start_robot_no_bt.sh
 
-说明：
-- `start_robot_no_bt.sh` 现在默认会自动起 `/robot_control` keepalive
-- 否则当前 MCU 不会接管外部导航速度，现象就是 `/cmd_vel_chassis` 有值但底盘不动
+Notes:
+- `start_robot_no_bt.sh` now auto-starts `/robot_control` keepalive by default
+- Without it the MCU may ignore external nav: `/cmd_vel_chassis` nonzero but chassis still
 
 cd /home/nyu/nav_ws
 MAP_FILE="/home/nyu/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml" \
@@ -322,12 +322,12 @@ START_BT=1 \
 RADAR_PTY=/tmp/nyush-rm-sentry-radar \
 START_FAKE_VEL_TRANSFORM=1 \
 ./start_robot.sh
-# 各变量含义见 README_COMMANDS.md §4
+# Variable meanings: README_COMMANDS.md §4
 
 bash /home/nyu/sentry_planner/scripts/autostart_fullstack.sh
-# 场上自启：重启 user bridge 服务 + vision + nav_ws/start_robot（含 BT、sender）。见 README_COMMANDS §8。
+# Field autostart: restart user bridge + vision + nav_ws/start_robot (BT, sender). README_COMMANDS §8.
 
-# 串口终端调试请用实际设备名（勿照抄）例如： screen /dev/ttyACM0 115200
+# Serial terminal: use your real device (do not copy): screen /dev/ttyACM0 115200
 
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/install/setup.zsh
@@ -351,13 +351,13 @@ pkill -9 -f static_transform_publisher
 pkill -9 -f "ros2 launch fast_lio"
 pkill -9 -f "ros2 launch livox_ros_driver2"
 
-终端 1：watcher
+Terminal 1: watcher
 
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
 python3 /home/nyu/sentry_planner/scripts/watch_center_attack_state.py
 
-终端 2：hotkey
+Terminal 2: hotkey
 
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
@@ -380,40 +380,40 @@ cd ~/nav_ws
 source install/setup.zsh
 ros2 launch pcd2pgm pcd2pgm_launch.py
 
-# 保存 Nav2 地图（yaml + pgm）到桌面 map 目录；MAP_FILE 指向该 yaml。PCD/PGM/YAML 分工与赛场 RMUL2026、换图改 BT 起终点见 README_COMMANDS.md §4.4、§7.4
+# Save Nav2 map (yaml + pgm) under Desktop/map; MAP_FILE points to that yaml. PCD/PGM/YAML roles, RMUL2026 field, retune BT goals after map swap: README_COMMANDS.md §4.4, §7.4
 cd ~/Desktop/map
 ros2 run nav2_map_server map_saver_cli -f 11_map
 
-# 保存完 11_map 后：需 GUI/VNC。打开地图窗口，点击图上一点可读相对地图原点的 x,y，用于 BT_START_GOAL/BT_END_GOAL 或 XML 里写死的 SendGoal（换图必重标）
+# After saving 11_map: use GUI/VNC. Map UI click -> x,y from map origin for BT_START_GOAL/BT_END_GOAL or hard-coded SendGoal in XML (retag after new map)
 python3 ~/nav_ws/map_point_picker.py ~/Desktop/map/11_map.yaml
 
-4.1 启动 sentry_planner（当前推荐）
------------------------------------
+4.1 Start sentry_planner (recommended)
+--------------------------------------
 cd /home/nyu/sentry_planner
 
-# 当前推荐：planner + bt + serial_sender 一起带起
+# Recommended: planner + BT + serial_sender together
 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 
-# 如果想顺手自动开 Nav2 RViz
+# Also auto-launch Nav2 RViz
 cd /home/nyu/sentry_planner
 ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 
-# 如果只想起 planner / Nav2 / BT，不自动写 Radar PTY
+# Only planner / Nav2 / BT; do not auto-write Radar PTY
 ./start_robot.sh
 
-4.2 只有在“手动分终端”时才单独启动行为树通讯适配层
-----------------------------------------------------
+4.2 Manual multi-terminal: comm adapter only
+----------------------------------------------
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/rm_vision_ws/install/setup.zsh
 source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
 python3 /home/nyu/sentry_planner/scripts/bt_comm_adapter.py
 
-4.3 只有在“手动分终端”时才单独把行为树底盘话题写进 Radar PTY
----------------------------------------------------------------
+4.3 Manual multi-terminal: BT chassis topic to Radar PTY only
+-------------------------------------------------------------
 source /opt/ros/humble/setup.zsh
 python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port /dev/pts/3 --ros2 --topic /cmd_vel_chassis_bt
 
-4.4 检查 planner、BT 和 sender 是否真的在发话题
+4.4 Verify planner, BT, sender are publishing
 ---------------------------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic hz /cmd_vel_chassis
@@ -427,84 +427,84 @@ ros2 topic echo /robot_status --once
 ros2 topic echo /game_status --once
 ros2 topic echo /detector/armors --once
 
-说明：
-- 在当前实机主线下，`/game_status` 和 `/robot_status` 默认来自 bridge 回传的真实裁判系统数据
-- 如果裁判系统没连上，或者下位机没刷到最新固件，这两个话题可能保持 0 或没有刷新
+Notes:
+- On the main hardware path, `/game_status` and `/robot_status` come from the bridge (real referee)
+- If the referee is disconnected or firmware is old, topics may stay at zero or stall
 
-4.5 键盘一键切行为树分支（当前推荐）
-------------------------------------
-如果你当前是 bash（提示符常见是 $）：
+4.5 Hotkey BT branch switch (recommended)
+-----------------------------------------
+If you use bash (prompt often `$`):
 source /opt/ros/humble/setup.bash
 source /home/nyu/sentry_planner/rm_decision_ws/install/setup.bash
 python3 /home/nyu/sentry_planner/scripts/bt_hotkey_debug.py
 
-如果你当前是 zsh：
+If you use zsh:
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/rm_decision_ws/install/setup.zsh
 python3 /home/nyu/sentry_planner/scripts/bt_hotkey_debug.py
 
-按键：
-0 -> HOME_STANDBY（未开赛）
-1 -> APPROACH_CENTER（比赛中 + 正常血量）
-2 -> HOME_RECOVER_HP（低血回家）
-3 -> HOME_RECOVER_HEAT（高热回家）
+Keys:
+0 -> HOME_STANDBY (pre-match)
+1 -> APPROACH_CENTER (in match, healthy HP)
+2 -> HOME_RECOVER_HP
+3 -> HOME_RECOVER_HEAT
 4 -> APPROACH_CENTER_ATTACKED
-p -> 打印当前预设
-h -> 帮助
-q -> 退出
+p -> print current preset
+h -> help
+q -> quit
 
-注意：
-- 这个脚本会持续发布 `/game_status` 和 `/robot_status`
-- 它很适合你说的“按一个键切状态并执行对应动作”
-- 但它会覆盖真实裁判系统状态；实机联调真实链路时，不开它更容易看清实际来源
-- `CENTER_HOLD_ATTACK` 仍然取决于真实 `map -> base_link` 是否已经到中心附近
+Caveats:
+- Script keeps publishing `/game_status` and `/robot_status`
+- Good for one-key state toggles
+- It overwrites real referee data; on hardware link debugging, keep it off to see true sources
+- `CENTER_HOLD_ATTACK` still needs real `map -> base_link` near center
 
-4.6 Groot2 看树状态
--------------------
+4.6 Groot2 monitor
+------------------
 cd ~/Desktop
 ./Groot2-v1.9.0-x86_64.AppImage
 
-如果你用的是源码 build 版：
+If you use a from-source Groot build:
 ~/Desktop/Groot/build/Groot
 
-然后：
-- 打开 `/home/nyu/sentry_planner/rm_decision_ws/rm_behavior_tree/config/Project.btproj`
-- 连接 `127.0.0.1:1667`
-- 一边看节点 tick，一边配合 `bt_hotkey_debug.py` 按键切分支
+Then:
+- Open `/home/nyu/sentry_planner/rm_decision_ws/rm_behavior_tree/config/Project.btproj`
+- Connect to `127.0.0.1:1667`
+- Watch node ticks while driving branches with `bt_hotkey_debug.py`
 
 
-5. 推荐终端分工
-===============
+5. Suggested terminal layout
+============================
 
-终端 1：bridge
+Terminal 1: bridge
 --------------
 python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --port /dev/ttyACM0
 
 cd /home/nyu/Codespace/nyush-rm-vision
 just test detect --web --send
-终端 1b：下位机 dashboard
------------------------
+Terminal 1b: MCU dashboard
+---------------------------
 cd /home/nyu/Codespace/nyush-rm-control
 just logger
 
-终端 2：planner 主入口
---------------------
+Terminal 2: planner main
+------------------------
 cd /home/nyu/sentry_planner
 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 
 cd /home/nyu/sentry_planner
 ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
-说明：
-- 这样会把 Nav2 + bt_comm_adapter + rm_behavior_tree + serial_sender 一起带起
-- 如果你不想自动起 sender，就改成单独跑 `./start_robot.sh`
+Notes:
+- Brings up Nav2 + bt_comm_adapter + rm_behavior_tree + serial_sender
+- For no auto sender, use `./start_robot.sh` alone
 
-终端 3：视觉
-------------
+Terminal 3: vision
+------------------
 cd /home/nyu/Codespace/nyush-rm-vision
 just test detect --web --send
 
-终端 4：手工话题测试 / 排查
---------------------------
+Terminal 4: manual topic tests / debug
+--------------------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic pub /cmd_vel_chassis geometry_msgs/msg/Twist "{linear: {x: 0.10, y: 0.00, z: 0.00}, angular: {x: 0.00, y: 0.00, z: 0.00}}" -1
 ros2 topic echo /robot_control --once
@@ -518,73 +518,73 @@ python3 /home/nyu/sentry_planner/scripts/bt_hotkey_debug.py
 cd ~/Desktop
 ./Groot2-v1.9.0-x86_64.AppImage
 
-6. 快速排障
-===========
+6. Quick troubleshooting
+=========================
 
-6.1 bridge 起不来
------------------
+6.1 Bridge will not start
+-------------------------
 lsof /dev/ttyACM0
 
-6.2 serial_sender 没反应
+6.2 serial_sender silent
 ------------------------
-确认它连的是 /dev/pts/3，不是 /dev/ttyACM0；并确认它监听的是 /cmd_vel_chassis_bt
+It must use /dev/pts/3, not /dev/ttyACM0, and listen on /cmd_vel_chassis_bt
 
-6.3 视觉没反应
---------------
-确认 sentry.yaml 里的 com_port 是 /dev/pts/2
+6.3 Vision silent
+-----------------
+`sentry.yaml` com_port should be /dev/pts/2 (example)
 
-6.3.1 just 命令提示没有 recipe
------------------------------
-确认当前所在仓库：
+6.3.1 just says missing recipe
+------------------------------
+Check cwd:
 
-- `just logger` / `just logger-cli` 要在 `nyush-rm-control`
-- `just test detect --web --send` 要在 `nyush-rm-vision`
+- `just logger` / `just logger-cli` → `nyush-rm-control`
+- `just test detect --web --send` → `nyush-rm-vision`
 
-6.4 行为树没动
---------------
-确认 bt_comm_adapter.py 正在运行，并检查 /game_status /robot_status /all_robot_hp /detector/armors /cmd_vel_chassis_bt
+6.4 Behavior tree not moving
+----------------------------
+`bt_comm_adapter.py` must run; check /game_status /robot_status /all_robot_hp /detector/armors /cmd_vel_chassis_bt
 
-6.5 bridge 重启后 PTY 变了
+6.5 PTY numbers changed after bridge restart
+--------------------------------------------
+Replace every /dev/pts/2 and /dev/pts/3 with the new bridge printout
+
+6.6 Nav2 RViz did not open
 --------------------------
-把所有 /dev/pts/2 和 /dev/pts/3 都替换成新打印出来的 PTY
+`start_robot.sh` defaults `ENABLE_RVIZ=0` for hardware/headless.
 
-6.6 为什么没自动打开 Nav2 的 RViz
------------------------------------
-新版 `start_robot.sh` 默认 `ENABLE_RVIZ=0`，适合实机/headless。
-
-如果你要自动开 RViz，用：
+To auto-start RViz:
 ENABLE_RVIZ=1 START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh
 
-6.7 旧文档里还写 /dev/ttyACM0
-------------------------------
-在当前桥接架构下，serial_sender 和视觉程序都不应该再直连 /dev/ttyACM0
+6.7 Docs still show /dev/ttyACM0
+--------------------------------
+With the bridge, neither serial_sender nor vision should open /dev/ttyACM0 directly
 
-6.8 真实裁判系统话题已经接到当前 bridge 主线
--------------------------------------------
-当前链路：
-裁判系统 -> C板 huart6 -> MCU ST -> sentry_bridge.py -> Radar PTY -> serial_sender.py --ros2 -> /game_status + /robot_status
+6.8 Referee topics on the bridge path
+-------------------------------------
+Path:
+referee system -> C-board huart6 -> MCU ST -> sentry_bridge.py -> Radar PTY -> serial_sender.py --ros2 -> /game_status + /robot_status
 
-实机确认命令：
+Hardware check:
 source /opt/ros/humble/setup.zsh
 ros2 topic echo /game_status --once
 ros2 topic echo /robot_status --once
 ros2 topic hz /game_status
 ros2 topic hz /robot_status
 
-提示：
-- 前提是下位机已经刷入这次新的哨兵固件
-- 还要保证当前运行的是仓库版 `serial_sender.py`
-- 如果你开了 `bt_hotkey_debug.py`，它会覆盖这两个话题
+Notes:
+- MCU must run current sentry firmware
+- Use repo `serial_sender.py`
+- `bt_hotkey_debug.py` overwrites these two topics
 
 
 
 
 
 
-# 1 找并停当前 bridge
+# 1 find and stop bridge
 ps -ef | rg "scripts/sentry_bridge.py --port /dev/ttyACM0"
 kill 13683
 
-# 2 重新以 debug 方式启动
+# 2 restart in debug mode
 cd /home/nyu/Codespace/nyush-rm-control
 SENTRY_BRIDGE_DEBUG=1 python3 scripts/sentry_bridge.py --port /dev/ttyACM0 --radar-link /tmp/nyush-rm-sentry-radar

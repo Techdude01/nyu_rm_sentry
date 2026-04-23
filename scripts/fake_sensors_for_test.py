@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-无雷达测试：发布假的 /scan, /odom, TF，让 Nav2 + 决策能跑起来。
-使用前需有预存地图 (map + yaml)。
+No-LiDAR test: publish fake /scan, /odom, and TF so Nav2 + the decision stack can run.
+Requires a saved map (map + yaml).
 
-用法:
+Usage:
   python3 fake_sensors_for_test.py
-  配合: Nav2 + 决策 + 模拟 game_status
+  Together with: Nav2 + decision + mock game_status
 """
 
 import rclpy
@@ -21,7 +21,7 @@ class FakeSensorsNode(Node):
     def __init__(self):
         super().__init__('fake_sensors')
 
-        # 发布假 /scan（空或简单障碍，避免 Nav2 报错）
+        # Fake /scan (open field) so Nav2 does not error
         self.scan_pub = self.create_publisher(LaserScan, '/scan', 10)
         self.odom_pub = self.create_publisher(Odometry, '/odom', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -32,21 +32,21 @@ class FakeSensorsNode(Node):
     def tick(self):
         self.t += 0.1
 
-        # 假的 LaserScan：360 度，range 5m，无障碍
+        # Fake LaserScan: 360 deg, 5 m range, no obstacles
         scan = LaserScan()
         scan.header.stamp = self.get_clock().now().to_msg()
         scan.header.frame_id = 'base_link'
         scan.angle_min = -math.pi
         scan.angle_max = math.pi
         scan.angle_increment = math.pi / 180.0
-        scan.time_increment = 0.0  # 同一次扫描内无时间差
+        scan.time_increment = 0.0  # no per-sample time offset within this scan
         scan.scan_time = 0.1       # 10 Hz
         scan.range_min = 0.1
         scan.range_max = 10.0
-        scan.ranges = [5.0] * 360  # 全是 5m，表示无障碍
+        scan.ranges = [5.0] * 360  # 5 m everywhere = clear
         self.scan_pub.publish(scan)
 
-        # 假的 Odometry
+        # Fake odometry
         odom = Odometry()
         odom.header.stamp = self.get_clock().now().to_msg()
         odom.header.frame_id = 'odom'
@@ -68,7 +68,7 @@ class FakeSensorsNode(Node):
         t.transform.rotation.w = 1.0
         self.tf_broadcaster.sendTransform(t)
 
-        # TF: map -> odom (静态，机器人假设在原点)
+        # TF: map -> odom (static; robot at origin)
         t2 = TransformStamped()
         t2.header.stamp = self.get_clock().now().to_msg()
         t2.header.frame_id = 'map'

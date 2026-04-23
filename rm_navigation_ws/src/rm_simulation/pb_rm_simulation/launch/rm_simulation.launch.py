@@ -96,7 +96,7 @@ def generate_launch_description():
         description='Robot description'
     )
 
-    # headless 模式：不启动 gzclient，大幅减轻 GPU 负载，适合低配/远程
+    # headless: no gzclient, much lower GPU use (low-end or remote)
     declare_headless_cmd = DeclareLaunchArgument(
         'headless',
         default_value='False',

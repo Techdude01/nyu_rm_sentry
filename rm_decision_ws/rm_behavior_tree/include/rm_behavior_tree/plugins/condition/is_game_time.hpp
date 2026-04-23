@@ -8,13 +8,13 @@ namespace rm_behavior_tree
 {
 
 /**
- * @brief condition节点，用于判断比赛阶段与剩余时间是否符合预期
-  * {0, "未开始比赛"}, {1, "准备阶段"}, {2, "十五秒裁判系统自检阶段"},
-  * {3, "五秒倒计时"}, {4, "比赛开始"}, {5, "比赛结算中"}
- * @param[in] message 比赛状态话题id
- * @param[in] game_progress 期望的比赛阶段
- * @param[in] lower_remain_time 期望的剩余时间下限
- * @param[in] higher_remain_time 期望的剩余时间上限
+ * @brief Condition: match stage and remaining time vs expected range.
+ * Stages: {0, "not started"}, {1, "setup"}, {2, "15s referee self-check"},
+ * {3, "5s countdown"}, {4, "match running"}, {5, "match ended / scoring"}
+ * @param[in] message Game status (blackboard)
+ * @param[in] game_progress Expected stage id
+ * @param[in] lower_remain_time Min remaining time (s)
+ * @param[in] higher_remain_time Max remaining time (s)
  */
 class IsGameTimeCondition : public BT::SimpleConditionNode
 {

@@ -95,7 +95,7 @@ def generate_launch_description():
         default_value='',
         description='Choose mode: nav, mapping')
 
-    # 仿真固定用 RMUL，不暴露 map 参数避免误传 11_map
+    # Sim uses RMUL; no separate map arg to avoid mistaken 11_map
     declare_localization_cmd = DeclareLaunchArgument(
         'localization',
         default_value='',
@@ -152,7 +152,7 @@ def generate_launch_description():
         parameters=[segmentation_params]
     )
 
-    # 仿真专用：始终订阅点云并发布 /scan，无懒订阅
+    # Sim only: always subscribe to cloud and publish /scan (no lazy subscription)
     pc2scan_script = os.path.join(
         get_package_share_directory('rm_nav_bringup'), 'scripts', 'pointcloud_to_laserscan_sim.py')
     bringup_pointcloud_to_laserscan_node = ExecuteProcess(
@@ -161,8 +161,8 @@ def generate_launch_description():
         emulate_tty=True,
     )
 
-    # Gazebo planar_move 插件可能不发布 TF，用 odom_to_tf 节点从 /Odometry 话题生成 TF
-    # 仿真中始终运行（因为 Gazebo 总会发布 /Odometry）
+    # Gazebo planar_move may not publish TF; odom_to_tf bridges /Odometry to TF
+    # Always run in sim (Gazebo publishes /Odometry)
     odom_to_tf_script = os.path.join(
         get_package_share_directory('rm_nav_bringup'), 'scripts', 'odom_to_tf.py')
     bringup_odom_to_tf_node = ExecuteProcess(
@@ -171,7 +171,7 @@ def generate_launch_description():
         emulate_tty=True,
     )
 
-    # 使用 Gazebo 里程计时不启动 Fast-LIO，避免 odom->base_link 双源冲突
+    # With Gazebo odometry, skip Fast-LIO to avoid dual odom->base_link sources
     bringup_LIO_group = GroupAction(
         condition=LaunchConfigurationEquals('use_gazebo_odom', 'false'),
         actions=[
@@ -183,7 +183,7 @@ def generate_launch_description():
                 '--child-frame-id', 'lidar_odom'
             ],
         ),
-        # 连接 Fast-LIO 与 Nav2：lidar_odom<->camera_init, body<->base_link，使 map 与 base_link_fake 在同一 TF 树
+        # Bridge Fast-LIO and Nav2: lidar_odom<->camera_init, body<->base_link so map and base_link_fake share one TF tree
         Node(
             package="tf2_ros",
             executable="static_transform_publisher",
@@ -191,7 +191,7 @@ def generate_launch_description():
             arguments=['0', '0', '0', '0', '0', '0', 'lidar_odom', 'camera_init'],
             parameters=[{'use_sim_time': use_sim_time}],
         ),
-        # dummy 是 URDF 根，body 是 Fast-LIO 的机器人帧，连接后：map->odom->lidar_odom->camera_init->body->dummy->base_link->base_link_fake
+        # dummy is URDF root; body is Fast-LIO robot frame: map->odom->lidar_odom->camera_init->body->dummy->base_link->base_link_fake
         Node(
             package="tf2_ros",
             executable="static_transform_publisher",

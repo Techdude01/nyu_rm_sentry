@@ -37,7 +37,7 @@ class DebugPreset:
 PRESETS: dict[str, DebugPreset] = {
     "0": DebugPreset(
         name="HOME_STANDBY",
-        description="未开赛，回家待机",
+        description="Pre-match: home standby",
         game_progress=0,
         stage_remain_time=220,
         current_hp=600,
@@ -45,7 +45,7 @@ PRESETS: dict[str, DebugPreset] = {
     ),
     "6": DebugPreset(
         name="IDLE_NO_SCAN",
-        description="静止，不扫描",
+        description="Idle, no scan",
         game_progress=2,
         stage_remain_time=220,
         current_hp=600,
@@ -53,7 +53,7 @@ PRESETS: dict[str, DebugPreset] = {
     ),
     "5": DebugPreset(
         name="PRESTART_SCAN",
-        description="比赛准备阶段，只原地扫描",
+        description="Pre-start: in-place scan only",
         game_progress=3,
         stage_remain_time=220,
         current_hp=600,
@@ -61,7 +61,7 @@ PRESETS: dict[str, DebugPreset] = {
     ),
     "1": DebugPreset(
         name="APPROACH_CENTER",
-        description="比赛中 + 正常血量，去中心",
+        description="In match, healthy HP: approach center",
         game_progress=4,
         stage_remain_time=220,
         current_hp=600,
@@ -69,7 +69,7 @@ PRESETS: dict[str, DebugPreset] = {
     ),
     "2": DebugPreset(
         name="HOME_RECOVER_HP",
-        description="比赛中 + 低血，回家恢复",
+        description="In match, low HP: return home to recover",
         game_progress=4,
         stage_remain_time=220,
         current_hp=200,
@@ -77,7 +77,7 @@ PRESETS: dict[str, DebugPreset] = {
     ),
     "3": DebugPreset(
         name="HOME_RECOVER_HEAT",
-        description="比赛中 + 高热，回家恢复",
+        description="In match, high heat: return home to recover",
         game_progress=4,
         stage_remain_time=220,
         current_hp=600,
@@ -85,7 +85,7 @@ PRESETS: dict[str, DebugPreset] = {
     ),
     "4": DebugPreset(
         name="APPROACH_CENTER_ATTACKED",
-        description="比赛中 + 正常血量 + attacked 标志",
+        description="In match, healthy HP + is_attacked",
         game_progress=4,
         stage_remain_time=220,
         current_hp=600,
@@ -94,7 +94,7 @@ PRESETS: dict[str, DebugPreset] = {
     ),
     "7": DebugPreset(
         name="FORCE_HOLD_ATTACK",
-        description="比赛中 + 强制敌人检测(原地小陀螺+自瞄)",
+        description="In match, force enemy detect (spin in place + auto-aim)",
         game_progress=4,
         stage_remain_time=220,
         current_hp=600,
@@ -159,15 +159,15 @@ class HotkeyDebugPublisher(Node):
             self.armors_pub.publish(armors_msg)
 
     def _print_help(self) -> None:
-        print("[BT HOTKEY] 可用按键：", flush=True)
+        print("[BT HOTKEY] Keys:", flush=True)
         for key, preset in PRESETS.items():
             print(f"  {key} -> {preset.name:<20} {preset.description}", flush=True)
-        print("  p -> 打印当前预设", flush=True)
-        print("  h -> 打印帮助", flush=True)
-        print("  q -> 退出", flush=True)
+        print("  p -> print current preset", flush=True)
+        print("  h -> print help", flush=True)
+        print("  q -> quit", flush=True)
         print(
-            "[BT HOTKEY] 注意：CENTER_HOLD_ATTACK 仍然取决于真实 map->base_link 是否到达中心点；\n"
-            "           这个工具主要用来一键切 game_status / robot_status 分支。",
+            "[BT HOTKEY] Note: CENTER_HOLD_ATTACK still needs real map->base_link at the center;\n"
+            "           this tool mainly toggles game_status / robot_status branches.",
             flush=True,
         )
 

@@ -179,7 +179,7 @@
     </inertial>
   </link>
 
-  <!-- Gazebo插件设置相关 -->
+  <!-- Gazebo plugin / visual material setup -->
   <gazebo reference="base_link">
     <material>Gazebo/Orange</material>
   </gazebo>

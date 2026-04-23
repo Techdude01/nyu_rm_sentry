@@ -1,9 +1,9 @@
 /**:
     ros__parameters:
         feature_extract_enable: false
-        point_filter_num: 3   # 5→3 减少下采样，提高位姿稳定性（定位乱飞时）
-        max_iteration: 2      # 1→2 增加迭代，提高位姿质量
-        filter_size_surf: 0.6 # 0.5->0.6 滤波更粗
+        point_filter_num: 3   # 5→3: less downsampling, stabler pose (when loc drifts)
+        max_iteration: 2      # 1→2: more iter, better pose
+        filter_size_surf: 0.6 # 0.5->0.6: coarser surface filter
         filter_size_map: 0.6
         cube_side_length: 1000.0
         runtime_pos_log_enable: false
@@ -18,7 +18,7 @@
 
         preprocess:
             lidar_type: 1                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for any other pointcloud input
-            scan_line:  6                # 4->6 降低扫描线密度
+            scan_line:  6                # 4->6: lower scan-line density
             blind: 0.5
             timestamp_unit: 3
             scan_rate: 10
@@ -39,7 +39,7 @@
         publish:
             path_en: true                # true: publish Path
             effect_map_en: false         # true: publish Effects
-            map_en: false                # true->false 不发布完整地图点云，减轻负载
+            map_en: false                # true->false: skip full map cloud to reduce load
             scan_publish_en:  true       # false: close all the point cloud output
             dense_publish_en: false      # false: low down the points number in a global-frame point clouds scan.
             scan_bodyframe_pub_en: true  # true: output the point cloud scans in IMU-body-frame

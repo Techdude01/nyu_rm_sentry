@@ -24,7 +24,7 @@ source /opt/ros/humble/setup.bash
 source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash"
 source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash"
 
-echo ">>> 清理旧的测试残留进程..."
+echo ">>> Cleaning stale test processes..."
 pkill -f "$SENTRY_ROOT/scripts/bt_comm_adapter.py" 2>/dev/null || true
 pkill -f "$SENTRY_ROOT/rm_decision_ws/install/rm_behavior_tree/lib/rm_behavior_tree/rm_behavior_tree" 2>/dev/null || true
 sleep 1
@@ -36,11 +36,11 @@ for arg in "$@"; do
   fi
 done
 
-echo ">>> 启动 bt_comm_adapter..."
+echo ">>> Starting bt_comm_adapter..."
 python3 "$SENTRY_ROOT/scripts/bt_comm_adapter.py" &
 sleep 2
 
-echo ">>> 等待 navigate_to_pose action..."
+echo ">>> Waiting for navigate_to_pose action..."
 ACTION_READY=0
 for _ in $(seq 1 15); do
   if ros2 action list 2>/dev/null | grep -q "navigate_to_pose"; then
@@ -51,10 +51,10 @@ for _ in $(seq 1 15); do
 done
 
 if [ "$ACTION_READY" -ne 1 ]; then
-  echo ">>> 警告: 15 秒内未看到 navigate_to_pose，继续启动行为树，测试里会再次检查"
+  echo ">>> Warning: navigate_to_pose not seen within 15s; continuing (test will recheck)"
 fi
 
-echo ">>> 启动 rm_behavior_tree ($BT_STYLE)..."
+echo ">>> Starting rm_behavior_tree ($BT_STYLE)..."
 ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
   style:="$BT_STYLE" \
   use_sim_time:="$USE_SIM_TIME" \
@@ -63,5 +63,5 @@ ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
   groot_port:="$GROOT_PORT" &
 sleep 3
 
-echo ">>> 运行行为链测试..."
+echo ">>> Running behavior-chain test..."
 python3 "$SCRIPT_DIR/test_behavior_chain.py" "$@"

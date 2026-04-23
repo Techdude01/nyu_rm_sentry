@@ -13,10 +13,10 @@ namespace rm_behavior_tree
 {
 
 /**
- * @brief 获取当前位置后小范围移动，躲避攻击
- *        以机器人当前位置为圆心，期望距离为半径的圆内随机生成随机点位
- * @param[in] message 机器人位置信息
- * @param[in] expected_nearby_goal_count 附近随机点位数量
+ * @brief Juke: sample random goals within a disk around the current pose to dodge fire.
+ * @param[in] message Current robot pose (TransformStamped)
+ * @param[in] expected_nearby_goal_count How many random goals to try
+ * @param[in] expected_dis Disk radius (m)
  */
 class MoveAroundAction : public BT::StatefulActionNode, rclcpp::Node
 {

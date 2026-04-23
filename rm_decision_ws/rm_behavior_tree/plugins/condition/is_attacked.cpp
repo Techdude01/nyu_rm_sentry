@@ -18,7 +18,7 @@ BT::NodeStatus IsAttakedAction::checkRobotAttacked()
   }
 
   if (msg->is_attacked) {
-    // 机器人受到攻击
+    // Robot is under attack
     return BT::NodeStatus::SUCCESS;
   }
 

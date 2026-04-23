@@ -1,7 +1,7 @@
 /**
   ****************************(C) COPYRIGHT 2023 Polarbear*************************
   * @file       rm_rune_detector_node.cpp
-  * @brief      能量机关检测模块
+  * @brief      Energy rune detector node
   * @note
   * @history
   *  Version    Date            Author          Modification
@@ -34,8 +34,8 @@
 namespace rm_rune_detector
 {
     /**
-     * @brief RMRuneDetectorNode 的构造函数。
-     * @param options 节点选项。
+     * @brief Construct RMRuneDetectorNode.
+     * @param options Node options.
      */
     RMRuneDetectorNode::RMRuneDetectorNode(const rclcpp::NodeOptions &options)
         : Node("rm_rune_detector", options)
@@ -108,19 +108,19 @@ namespace rm_rune_detector
     }
 
     /**
-     * @brief 处理图像，检测能量机关并预测打击位置的回调函数
+     * @brief Image callback: detect rune and (later) publish strike solution
      * @param img_msg
      */
     void RMRuneDetectorNode::ImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg)
     {
-        // TODO: 识别图中的能量机关靶标后发布靶标信息
+        // TODO: detect rune plates and publish target messages
         auto targets = DetectRunes(img_msg);
     }
 
     /**
-     * @brief 识别图中的能量机关靶标（包括已激活的和未激活的靶标）
+     * @brief Detect rune strike plates (active and inactive)
      * @param img_msg
-     * @return 所有靶标的数组
+     * @return All detected targets
      */
     std::vector<Target> RMRuneDetectorNode::DetectRunes(const sensor_msgs::msg::Image::ConstSharedPtr &img_msg)
     {
@@ -135,9 +135,10 @@ namespace rm_rune_detector
         // Update params
         detector_->binary_thres = get_parameter("binary_thres").as_int();
         // detector_->detect_color = get_parameter("detect_color").as_int();
-        detector_->detect_color = 1 - get_parameter("detect_color").as_int();//这里使用1-是因为serial的数据中设置的是识别装甲板的颜色，也就是对方的颜色，而能量机关则是己方的颜色，所以要取反
+        // Serial uses detect_color for enemy armor; rune must use ally color, hence 1 - value.
+        detector_->detect_color = 1 - get_parameter("detect_color").as_int();
 
-        // TODO: 识别图中的能量机关靶标并得到目标列表
+        // TODO: run full rune pipeline and build target list
         std::vector<Target> targets = detector_->Detect(img);
         if (debug_)
         {
@@ -148,7 +149,7 @@ namespace rm_rune_detector
     }
 
     /**
-     * @brief 发布调试信息
+     * @brief Create debug publishers
      */
     void RMRuneDetectorNode::CreateDebugPublishers()
     {

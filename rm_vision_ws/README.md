@@ -1,10 +1,10 @@
-# 北极熊视觉系统
+# Polar Bear vision stack
 
-> 本项目为北极熊视觉系统，基于 ROS2 实现不同兵种所需的视觉功能。
+> ROS 2–based vision stack for multiple RoboMaster vehicle roles.
 
-日前迁移了 rm_vision 进入系统，实现了装甲板瞄准功能，现在正在开发能量机关识别以及矿物拾取和兑换识别。
+`rm_vision` was integrated into this system with armor aiming; energy rune detection, ore pickup, and exchange-station recognition are in development.
 
-## 一. 环境搭建与编译
+## 1. Environment setup and build
 
 ```sh
 rosdep install --from-paths src --ignore-src -r -y
@@ -20,11 +20,11 @@ cd PB_RM_Vision
 colcon build --symlink-install
 ```
 
-## 二. 使用帮助
+## 2. Usage
 
-### 1.1 启动所有模块
+### 2.1 Launch all modules
 
-以下为可供选择的 launch 文件和说明
+Available launch files and roles:
 
 <!-- markdownlint-disable MD033 -->
 
@@ -32,7 +32,7 @@ colcon build --symlink-install
 
     <summary>rm_vision</summary>
 
-    仅包括 `装甲板识别` 模块
+    Armor detection only.
 
     ```sh
     sudo chmod 777 /dev/ttyACM0
@@ -45,7 +45,7 @@ colcon build --symlink-install
 
 <!-- markdownlint-enable MD033 -->
 
-- 步兵：包括 `装甲板识别` 和 `能量机关识别` 模块
+- Infantry: armor detection and energy rune detection
 
   ```sh
   sudo chmod 777 /dev/ttyACM0
@@ -54,7 +54,7 @@ colcon build --symlink-install
   ros2 launch rm_vision_bringup infantry_bringup.launch.py
   ```
 
-- 英雄：包括 `装甲板识别` 模块
+- Hero: armor detection
 
   ```sh
   sudo chmod 777 /dev/ttyACM0
@@ -63,36 +63,36 @@ colcon build --symlink-install
   ros2 launch rm_vision_bringup hero_bringup.launch.py
   ```
 
-- 工程：包括`兑换站识别`和`矿石识别`模块
+- Engineer: exchange-station and ore detection (planned)
 
-- 哨兵：包括`装甲板识别`模块
+- Sentry: armor detection
 
-### 1.2 启动可视化
+### 2.2 Visualization
 
 ```sh
 source install/setup.bash
 ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765
 ```
 
-### 1.3 单独运行子模块
+### 2.3 Run a single sub-package
 
-一般用不上，写在这只为了有时开发要调用 rv 独立模块调试
+Optional; useful when debugging a node in isolation with RViz or similar.
 
-- 自瞄模块
+- Auto-aim
 
     ```sh
     source install/setup.bash
     ros2 launch auto_aim_bringup auto_aim.launch.py 
     ```
 
-- 海康相机模块
+- Hikvision camera
 
     ```sh
     source install/setup.bash
     ros2 launch hik_camera hik_camera.launch.py
     ```
 
-- 串口模块
+- Serial driver
 
     ```sh
     sudo chmod 777 /dev/ttyACM0
@@ -101,21 +101,23 @@ ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765
     ros2 launch rm_serial_driver serial_driver.launch.py
     ```
 
-- 能量机关识别模块
+- Energy rune detector
 
     ```sh
     source install/setup.bash
     ros2 launch rm_rune_detector rm_rune_detector.launch.py
     ```
 
-## 三. 相关信息
+## 3. Reference
 
-### 3.1 通讯协议
+### 3.1 Serial protocol
 
-详见：[README (rm_serial_driver)](/src/rm_serial_driver/README.md)
+See [rm_serial_driver README](src/rm_serial_driver/README.md).
 
-## 其他文档
+## Other documentation
 
-rm_vision 部署文档： [部署华师视觉项目](https://flowus.cn/lihanchen/share/0d472992-f136-4e0e-856f-89328e99c684) 
+- rm_vision deployment: [HuaShi vision deployment (Flowus)](https://flowus.cn/lihanchen/share/0d472992-f136-4e0e-856f-89328e99c684) 
 
-测算相机畸变与内参矩阵：[相机标定](https://flowus.cn/lihanchen/share/02a518a0-f1bb-47a5-8313-55f75bab21b5)
+- Camera intrinsics and distortion: [Camera calibration (Flowus)](https://flowus.cn/lihanchen/share/02a518a0-f1bb-47a5-8313-55f75bab21b5)
+
+- [Progress and roadmap](docs/progress-and-roadmap.md) · [Using ROS 2](docs/ros2-usage.md)

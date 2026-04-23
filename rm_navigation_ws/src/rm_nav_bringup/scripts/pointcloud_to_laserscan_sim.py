@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-仿真专用 pointcloud_to_laserscan：始终订阅点云并发布 /scan，无懒订阅。
-解决官方 pointcloud_to_laserscan 的懒订阅导致 /scan 无数据问题。
+Sim-only pointcloud_to_laserscan: always subscribe and publish /scan (no lazy subscription).
+Fixes upstream lazy subscription leaving /scan empty.
 """
 import struct
 import math
@@ -12,7 +12,7 @@ from sensor_msgs.msg import PointCloud2, LaserScan
 
 
 def read_points_xyz(cloud_msg):
-    """从 PointCloud2 解析 (x,y,z)，兼容 xyz 和 xyzrgb 格式"""
+    """Parse (x,y,z) from PointCloud2; supports xyz and xyzrgb layouts."""
     points = []
     point_step = cloud_msg.point_step
     offset_x = offset_y = offset_z = None
@@ -41,14 +41,14 @@ def read_points_xyz(cloud_msg):
 class PointcloudToLaserScanSim(Node):
     def __init__(self):
         super().__init__('pointcloud_to_laserscan_sim')
-        # 不在节点内 declare use_sim_time，避免与 launch 的 -p use_sim_time:=true 冲突
+        # Do not declare use_sim_time here; launch passes -p use_sim_time:=true
         self.declare_parameter('cloud_topic', '/livox/lidar/pointcloud')
         self.declare_parameter('scan_topic', '/scan')
         self.declare_parameter('min_height', -0.5)
         self.declare_parameter('max_height', 2.0)
         self.declare_parameter('angle_min', -math.pi)
         self.declare_parameter('angle_max', math.pi)
-        # pi/360->pi/180 更粗角度分辨率，减轻 downstream 负载
+        # pi/360->pi/180: coarser angular resolution, lighter downstream load
         self.declare_parameter('angle_increment', math.pi / 180.0)
         self.declare_parameter('range_min', 0.1)
         self.declare_parameter('range_max', 20.0)
@@ -61,13 +61,13 @@ class PointcloudToLaserScanSim(Node):
         self.sub = self.create_subscription(PointCloud2, cloud_topic, self.callback, qos)
         self.pub = self.create_publisher(LaserScan, scan_topic, 10)
 
-        self.get_logger().info(f'仿真 pointcloud_to_laserscan: {cloud_topic} -> {scan_topic} (始终订阅)')
+        self.get_logger().info(f'Sim pointcloud_to_laserscan: {cloud_topic} -> {scan_topic} (always subscribed)')
 
     def callback(self, msg):
         try:
             points = read_points_xyz(msg)
         except Exception as e:
-            self.get_logger().warn(f'读取点云失败: {e}')
+            self.get_logger().warn(f'Failed to read point cloud: {e}')
             return
 
         if not points:

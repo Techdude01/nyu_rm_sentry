@@ -4,23 +4,23 @@ FROM ros:humble-ros-base
 RUN mkdir -p /ros_ws
 WORKDIR /ros_ws/
 
-# 小鱼一键换源
+# fishros: one-shot mirror and ROS repo setup
 RUN apt update \
     && apt install wget python3-yaml -y  \
     && echo "chooses:\n" > fish_install.yaml \
-    && echo "- {choose: 5, desc: '一键配置:系统源(更换系统源,支持全版本Ubuntu系统)'}\n" >> fish_install.yaml \
-    && echo "- {choose: 2, desc: 更换系统源并清理第三方源}\n" >> fish_install.yaml \
-    && echo "- {choose: 1, desc: 添加ROS/ROS2源}\n" >> fish_install.yaml \
+    && echo "- {choose: 5, desc: 'One-shot: system apt mirrors (all Ubuntu versions)'}\n" >> fish_install.yaml \
+    && echo "- {choose: 2, desc: Switch mirrors and clean third-party sources}\n" >> fish_install.yaml \
+    && echo "- {choose: 1, desc: Add ROS/ROS2 apt repositories}\n" >> fish_install.yaml \
     && wget http://fishros.com/install  -O fishros && /bin/bash fishros \
     && rm -rf /var/lib/apt/lists/*  /tmp/* /var/tmp/*
 
-# 初始化 rosdepc
+# Initialize rosdepc
 RUN apt-get update && apt-get install python3-pip -y && \
     pip install rosdepc && \
     sudo rosdepc init  && \
     rosdepc update
 
-# 安装 Clang
+# Install Clang
 RUN apt-get -y install clang  && \
     apt-get -y install clangd  && \
     apt-get -y install clang-format && \

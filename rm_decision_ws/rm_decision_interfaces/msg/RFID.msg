@@ -1,3 +1,3 @@
-# v1.6.1 0x0209 机器人RFID状态（此处仅保留我方哨兵巡逻区）
-# 仅用于 RMUC
+# v1.6.1 0x0209 Robot RFID (ally sentry patrol field only here)
+# RMUC only
 bool rfid_patrol_status

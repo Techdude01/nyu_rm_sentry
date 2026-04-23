@@ -1,7 +1,7 @@
-NYUSH 调试备忘（Gazebo Sim2Real + 实机）
-========================================
-**推荐顺序：** 先按 **§1～§8** 在 **Gazebo RMUL2026** 调 Nav2 + `center_attack_simple`，再上实车。  
-**原理与 launch 说明：** [README_LIDAR.md](README_LIDAR.md) **§6.4**（含 Groot2 AppImage）、**§10.8**；行为树见 [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)；实机终端见 [README_COMMANDS.md §12](README_COMMANDS.md#12-实机联调)。
+NYUSH debug notes (Gazebo Sim2Real + hardware)
+================================================
+**Suggested order:** Run **§1–§8** in **Gazebo RMUL2026** with Nav2 + `center_attack_simple` first, then move to the real robot.  
+**Theory and launch:** [README_LIDAR.md](README_LIDAR.md) **§6.4** (includes Groot2 AppImage), **§10.8**; behavior trees: [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md); hardware terminals: [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12).
 
 CURRENT DEBUG FLOW
 ==================
@@ -20,16 +20,16 @@ cd ~/nav_ws
 source install/setup.bash
 ros2 launch pcd2pgm pcd2pgm_launch.py
 
-# 保存 Nav2 地图（实机/离线建图后）；详述见 README_COMMANDS.md §7
+# Save Nav2 map (after hardware/offline mapping); details in README_COMMANDS.md §7
 cd ~/Desktop/map
 ros2 run nav2_map_server map_saver_cli -f 11_map
 
 
-当前只保留我们现在真的在调的链路：
-- RMUL2026 Gazebo 仿真
+We only keep the flows we actively tune:
+- RMUL2026 Gazebo simulation
 - Nav2
 - `center_attack_simple`
-- 手动调 “去中心 / 守中 / 回家”
+- Manual tuning of "go to center / hold center / go home"
 python3 /home/nyu/Codespace/nyush-rm-control/scripts/sentry_bridge.py --port /dev/ttyACM1
 
 source /opt/ros/humble/setup.zsh
@@ -55,16 +55,16 @@ source /home/nyu/sentry_planner/install/setup.zsh
 ros2 topic pub -r 20 /cmd_vel_chassis geometry_msgs/msg/Twist \
 "{linear: {x: 0.0, y: 0.5, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
 
-0. 只在改过行为树代码后才重新编译
---------------------------------
+0. Rebuild only after behavior tree code changes
+-------------------------------------------------
 cd ~/sentry_planner/rm_decision_ws
 source /opt/ros/humble/setup.zsh
 source ~/sentry_planner/rm_vision_ws/install/setup.zsh
 colcon build --symlink-install --packages-select rm_behavior_tree
 
 
-1. 终端 1：启动 Gazebo + Nav2 + RViz
------------------------------------
+1. Terminal 1: Start Gazebo + Nav2 + RViz
+-----------------------------------------
 cd ~/sentry_planner/rm_navigation_ws
 source ~/nav_ws/install/setup.zsh
 source install/setup.zsh
@@ -72,97 +72,97 @@ ros2 launch rm_nav_bringup bringup_sim.launch.py \
   world:=RMUL2026 mode:=nav localization:=amcl use_gazebo_odom:=true nav_rviz:=True
 
 
-2. 终端 2：启动持续调试会话
----------------------------
-# 这个脚本会一直保活：
+2. Terminal 2: Long-running debug session
+-----------------------------------------
+# This script keeps running:
 # - bt_comm_adapter
 # - center_attack_simple
 # - watch_center_attack_state.py
 #
-# 用它来长期调 “回家 / 守中”
-# 不要和一次性的 smoke test 混着用
+# Use it for extended tuning of "home / hold center"
+# Do not mix with one-shot smoke tests
 bash ~/sentry_planner/scripts/run_center_attack_debug_session.sh
 
 cd /home/nyu/Codespace/nyush-rm-vision
 python3 serial_sender.py --ros2 --port /dev/pts/15 --topic /cmd_vel_chassis_bt
-3. 终端 3：先 source 再手动发输入
----------------------------------
+3. Terminal 3: Source then publish inputs manually
+--------------------------------------------------
 source /opt/ros/humble/setup.zsh
 source ~/sentry_planner/rm_decision_ws/install/setup.zsh
 
 
-4. 去中心
----------
-# 游戏开始 + 状态正常
+4. Go to center
+----------------
+# Match started + healthy status
 ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
   "{game_progress: 4, stage_remain_time: 220}"
 
 ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
   "{robot_id: 7, current_hp: 600, shooter_heat: 0, team_color: false, is_attacked: false}"
 
-# 期望：
-# - watcher 显示 APPROACH_CENTER
-# - 机器人往 Center2026 (6.33, 4.32) 走
+# Expect:
+# - watcher shows APPROACH_CENTER
+# - robot moves toward Center2026 (6.33, 4.32)
 
 
-5. 守中
--------
-# 保持上面的健康状态不变
-# 等机器人自己走到中心附近
+5. Hold center
+--------------
+# Keep the healthy state above
+# Wait until the robot reaches the center area
 #
-# 期望：
-# - watcher 从 APPROACH_CENTER 切到 CENTER_HOLD_ATTACK
+# Expect:
+# - watcher switches from APPROACH_CENTER to CENTER_HOLD_ATTACK
 # - d_center < 0.35
 # - stop_scan=True
 # - spin=0.5
 
 
-6. 低血回家
------------
+6. Low HP — go home
+-------------------
 ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
   "{robot_id: 7, current_hp: 200, shooter_heat: 0, team_color: false, is_attacked: false}"
 
-# 期望：
-# - watcher 显示 HOME_RECOVER
-# - d_home 逐渐减小
+# Expect:
+# - watcher shows HOME_RECOVER
+# - d_home decreases
 # - stop_scan=False
 # - spin=0.0
 
 
-7. 高热回家
------------
+7. High heat — go home
+----------------------
 ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
   "{robot_id: 7, current_hp: 600, shooter_heat: 400, team_color: false, is_attacked: false}"
 
-# 期望：
-# - watcher 显示 HOME_RECOVER
+# Expect:
+# - watcher shows HOME_RECOVER
 
 
-8. 未开赛回家待机
------------------
+8. Pre-match — home standby
+---------------------------
 ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
   "{game_progress: 0, stage_remain_time: 220}"
 
-# 期望：
-# - watcher 显示 HOME_STANDBY
+# Expect:
+# - watcher shows HOME_STANDBY
 
 
-9. 先看当前输入到底是什么
--------------------------
+9. Inspect current inputs first
+-------------------------------
 ros2 topic echo /game_status --once
 ros2 topic echo /robot_status --once
 
-# 重要：
-# - 只发 /game_status 不一定会去中心
-# - 当前树还依赖 /robot_status：
+# Important:
+# - Publishing /game_status alone may not trigger "go to center"
+# - The tree also depends on /robot_status:
 #   current_hp >= 250
 #   shooter_heat <= 350
-# - 如果之前开过低血/高热的 `ros2 topic pub -r ... /robot_status ...`
-#   那个终端不 Ctrl+C，它会一直把树压在回家分支
+# - If you previously started a low-HP/high-heat `ros2 topic pub -r ... /robot_status ...`
+#   and did not Ctrl+C that terminal, it keeps forcing the home branch
 
 
-10. 快速观察
-------------
+10. Quick checks
+----------------
 ros2 action list | grep navigate_to_pose
 ros2 topic echo /robot_control
 ros2 topic echo /cmd_vel
@@ -170,32 +170,32 @@ ros2 topic echo /cmd_vel_chassis
 ros2 topic echo /cmd_vel_chassis_bt
 
 
-11. 一次性冒烟测试
------------------
-# 只想测“整条链通不通”，用这个
-# 它测试完会自动退出，不适合手动反复调分支
+11. One-shot smoke test
+-----------------------
+# To test whether the full chain works end-to-end, use this.
+# It exits when done; not for manual branch toggling.
 bash ~/sentry_planner/scripts/run_behavior_chain_autostart.sh
 
 
-12. 自动等待守中切换
---------------------
-# 适合确认“是否真的到中心后切成攻击态”
+12. Auto-wait for hold-center transition
+----------------------------------------
+# Confirms transition to attack state after truly reaching center
 bash ~/sentry_planner/scripts/run_behavior_chain_test.sh \
   --require-center --center-timeout 60
 
 
-13. 可选：开 Groot2（当前队内：桌面 AppImage；版本号随下载包而变）
--------------------------------------------------------------------
+13. Optional: Groot2 (team default: desktop AppImage; version varies with download)
+-----------------------------------------------------------------------------------
 cd ~/Desktop
 ./Groot2-v1.9.0-x86_64.AppImage
-# 打开 rm_decision_ws/rm_behavior_tree/config/Project.btproj → Monitor → 127.0.0.1:1667
-# 须在 rm_behavior_tree launch 里 enable_groot:=true（见 README_BEHAVIOR_TREE_FLOW.md §18.1）
+# Open rm_decision_ws/rm_behavior_tree/config/Project.btproj → Monitor → 127.0.0.1:1667
+# rm_behavior_tree launch must use enable_groot:=true (see README_BEHAVIOR_TREE_FLOW.md §18.1)
 
 
 KEY POINTS
 ==========
 
-当前 `center_attack_simple` 关键点：
+Current `center_attack_simple` highlights:
 - Home: `(0.8, 7.8)`
 - Center2026: `(6.33, 4.32)`
 - Center threshold: `0.35 m`

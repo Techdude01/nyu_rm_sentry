@@ -22,10 +22,10 @@ BT::NodeStatus IsStatusOKAction::checkRobotStatus()
   }
 
   if (msg->current_hp < hp_threshold || msg->shooter_heat > heat_threshold) {
-    // std::cout << "血量/热量达到预警值" << '\n';
+    // std::cout << "HP/heat past threshold" << '\n';
     return BT::NodeStatus::FAILURE;
   } else {
-    // std::cout << "血量/热量正常" << '\n';
+    // std::cout << "HP/heat OK" << '\n';
     return BT::NodeStatus::SUCCESS;
   }
 }

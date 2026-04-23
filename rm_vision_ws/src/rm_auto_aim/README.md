@@ -2,13 +2,13 @@
 
 ## Overview
 
-RoboMaster 装甲板自瞄算法模块
+RoboMaster armor auto-aim stack.
 
 <img src="docs/rm_vision.svg" alt="rm_vision" width="200" height="200">
 
-该项目为 [rm_vision](https://github.com/chenjunnn/rm_vision) 的子模块
+This package is a submodule of [rm_vision](https://github.com/chenjunnn/rm_vision).
 
-若有帮助请Star这个项目，感谢~
+If you find it useful, please star the project.
 
 ### License
 
@@ -18,7 +18,7 @@ The source code is released under a [MIT license](rm_auto_aim/LICENSE).
 
 Author: Chen Jun
 
-运行环境：Ubuntu 22.04 / ROS2 Humble (未在其他环境下测试)
+Tested on Ubuntu 22.04 / ROS 2 Humble (other setups not verified).
 
 ![Build Status](https://github.com/chenjunnn/rm_auto_aim/actions/workflows/ros_ci.yml/badge.svg)
 
@@ -26,9 +26,9 @@ Author: Chen Jun
 
 ### Building
 
-在 Ubuntu 22.04 环境下安装 [ROS2 Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)
+Install [ROS 2 Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html) on Ubuntu 22.04.
 
-创建 ROS 工作空间后 clone 项目，使用 rosdep 安装依赖后编译代码
+Create a workspace, clone, install dependencies with rosdep, then build:
 
 	cd ros_ws/src
 	git clone https://github.com/chenjunnn/rm_auto_aim.git
@@ -46,16 +46,16 @@ Run the tests with
 
 - [armor_detector](armor_detector)
 
-	订阅相机参数及图像流进行装甲板的识别并解算三维位置，输出识别到的装甲板在输入frame下的三维位置 (一般是以相机光心为原点的相机坐标系)
+	Subscribe to camera info and images, detect armor, and publish 3D positions in the input frame (typically camera frame at the optical center).
 
 - [armor_tracker](armor_tracker)
 
-	订阅识别节点发布的装甲板三维位置及机器人的坐标转换信息，将装甲板三维位置变换到指定惯性系（一般是以云台中心为原点，IMU 上电时的 Yaw 朝向为 X 轴的惯性系）下，然后将装甲板目标送入跟踪器中，输出跟踪机器人在指定惯性系下的状态
+	Subscribe to detector output and TF; transform armor poses into a chosen inertial frame (typical: gimbal center, X aligned with IMU yaw at power-on). Feeds the tracker and publishes tracked target state in that frame.
 
 - auto_aim_interfaces
 
-	定义了识别节点和处理节点的接口以及定义了用于 Debug 的信息
+	Message definitions for the detector, tracker, and debug topics.
 
 - auto_aim_bringup
 
-	包含启动识别节点和处理节点的默认参数文件及 launch 文件
+	Default parameters, launch files, and bringup for detector + tracker.

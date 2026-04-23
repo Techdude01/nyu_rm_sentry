@@ -1,0 +1,25 @@
+# Progress and roadmap
+
+- [x] Monocular camera module
+- [ ] Panoramic camera module
+  - [ ] Create package
+- [x] Serial communication module
+- [x] Armor detection module
+- [ ] Energy rune detection module
+  - [x] Create package
+  - [ ] Detect rune targets
+  - [ ] Show 3D pose in Foxglove Studio
+  - [ ] Predict strike point
+- [ ] Projectile detection module
+  - [ ] Create package
+- [ ] Ore detection module
+  - [ ] Create package
+- [ ] Exchange-station detection module
+  - [ ] Create package
+- [ ] Ego-vehicle state module (integrated into serial module)
+  - [ ] Create package
+- [ ] Target state estimation module
+  - [ ] Create package
+- [ ] Chassis motion command module
+  - [ ] Create package
+- [ ] ...

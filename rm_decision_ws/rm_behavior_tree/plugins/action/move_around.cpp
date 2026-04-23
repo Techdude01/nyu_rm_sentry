@@ -30,19 +30,19 @@ BT::NodeStatus MoveAroundAction::onStart()
   expected_nearby_goal_count = 0;
   goal_count = 0;
 
-  // 获取参数：机器人当前位置坐标的blackboard映射
+  // Blackboard: current robot pose
   if (!getInput("message", current_location)) {
     // std::cout << "missing required input [current_location]" << '\n';
     return BT::NodeStatus::FAILURE;
   }
 
-  // 获取参数：期望的距离
+  // Expected radius (m)
   if (!getInput("expected_dis", expected_dis)) {
     // std::cout << "missing required input [expected_dis]" << '\n';
     return BT::NodeStatus::FAILURE;
   }
 
-  // 获取参数：期望的点位数量
+  // How many random goals to visit
   if (!getInput("expected_nearby_goal_count", expected_nearby_goal_count)) {
     // std::cout << "missing required input [expected_nearby_goal_count]" << '\n';
     return BT::NodeStatus::FAILURE;
@@ -69,7 +69,7 @@ BT::NodeStatus MoveAroundAction::onRunning()
     goal_count++;
     generatePoints(current_location, expected_dis, nearby_random_point);
     sendGoalPose(nearby_random_point);
-    std::this_thread::sleep_for(milliseconds(1000));  // 这是不太文明的做法...
+    std::this_thread::sleep_for(milliseconds(1000));  // crude blocking delay
     return BT::NodeStatus::RUNNING;
   }
 }
@@ -84,12 +84,12 @@ void MoveAroundAction::generatePoints(
   geometry_msgs::msg::TransformStamped location, double distance,
   geometry_msgs::msg::PoseStamped & nearby_random_point)
 {
-  // 创建随机数生成器
+  // RNG
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<> dis(0, 2 * M_PI);
 
-  // 生成随机角度
+  // Random heading on the circle
   double angle = dis(gen);
 
   nearby_random_point.header.stamp = rclcpp::Clock().now();

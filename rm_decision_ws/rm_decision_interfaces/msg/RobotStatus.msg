@@ -1,10 +1,10 @@
-# v1.6.1 0x0201 机器人性能体系数据
-uint8 robot_id # 机器人ID （1~7->红，101~107->蓝
-uint16 current_hp # 血量
+# v1.6.1 0x0201 Robot performance data
+uint8 robot_id # Robot ID: 1~7 red, 101~107 blue
+uint16 current_hp # Hit points
 
-# v1.6.1 0x0202 实时功率热量数据
-uint16 shooter_heat # 枪口热量
+# v1.6.1 0x0202 Real-time power / heat
+uint16 shooter_heat # Barrel heat
 
-# 经下位机处理后的数据
-bool team_color # 队伍颜色 0->红 1->蓝
-bool is_attacked # 是否受到攻击 0->未受到攻击 1->受到攻击
+# Processed on the embedded side
+bool team_color # Team color: 0 red, 1 blue
+bool is_attacked # Under attack: 0 no, 1 yes

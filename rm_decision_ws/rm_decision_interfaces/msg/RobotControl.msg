@@ -1,11 +1,11 @@
-# 机器人控制命令（云台，底盘）
+# Robot control (gimbal, chassis)
 # legacy compatibility fields
-bool stop_gimbal_scan # 旧语义: 0->继续扫描 1->停止扫描并允许自瞄接管
-float32 chassis_spin_vel # 底盘小陀螺旋转速度 (rad/s)
+bool stop_gimbal_scan # Legacy: 0 keep scanning, 1 stop scan and hand off to auto-aim
+float32 chassis_spin_vel # Chassis "spin" yaw rate (rad/s)
 
-# sentry functional control fields
-bool scan_enabled # 是否启用云台扫描
-bool allow_vision_control # 是否允许视觉自瞄接管云台
-bool search_when_target_lost # 自瞄无目标时是否回到扫描搜索
-float32 scan_yaw_rate_deg_s # 扫描时云台yaw角速度 (deg/s)
-float32 search_pitch_deg # 扫描/搜索时云台俯仰目标角 (deg)
+# Sentry control fields
+bool scan_enabled # Enable gimbal scan pattern
+bool allow_vision_control # Allow vision auto-aim to take gimbal
+bool search_when_target_lost # When auto-aim has no target, return to scan search
+float32 scan_yaw_rate_deg_s # Gimbal yaw rate while scanning (deg/s)
+float32 search_pitch_deg # Gimbal pitch setpoint in scan/search (deg)

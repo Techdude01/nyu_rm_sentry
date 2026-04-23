@@ -8,8 +8,8 @@ namespace rm_behavior_tree
 {
 
 /**
- * @brief condition节点，用于判断机器人是否被攻击掉血
- * @param[in] message 机器人状态话题id
+ * @brief Condition: whether the robot is flagged as under attack (HP loss event).
+ * @param[in] message Robot status (blackboard)
  */
 class IsAttakedAction : public BT::SimpleConditionNode
 {

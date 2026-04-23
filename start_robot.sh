@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-# --- 脚本功能：一键启动 激光雷达 + FAST-LIO + Nav2 + 当前主线行为树 ---
+# --- One-shot startup: LiDAR + FAST-LIO + Nav2 + current main behavior tree ---
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$SCRIPT_DIR"
@@ -59,7 +59,7 @@ ICP_MAP_OFFSET_Y="${ICP_MAP_OFFSET_Y:-}"
 ICP_MAP_OFFSET_Z="${ICP_MAP_OFFSET_Z:-0.0}"
 
 cleanup() {
-    echo "正在关闭所有节点..."
+    echo "Shutting down all nodes..."
     kill $(jobs -p) 2>/dev/null || true
     rm -f "${ICP_RUNTIME_CONFIG:-}" 2>/dev/null || true
 }
@@ -173,11 +173,11 @@ if [ ! -w "$HOME/.ros/log" ] 2>/dev/null; then
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "❌ 错误：未找到 python3"
+    echo "❌ Error: python3 not found"
     exit 1
 fi
 
-echo ">>> [0/11] 清理环境..."
+echo ">>> [0/11] Cleaning environment..."
 if [ "$RESET_FASTRTPS_SHM" = "1" ]; then
     echo "    RESET_FASTRTPS_SHM=1, removing /dev/shm/fastrtps_* ..."
     rm -f /dev/shm/fastrtps_* 2>/dev/null || true
@@ -185,7 +185,7 @@ fi
 ros2 daemon stop || true
 ros2 daemon start
 
-echo "   正在停止旧的 ROS2 / 导航 / 行为树残留进程..."
+echo "   Stopping stale ROS2 / navigation / behavior tree processes..."
 pkill -9 -f fast_lio_mapping 2>/dev/null || true
 pkill -9 -f livox_ros_driver2 2>/dev/null || true
 pkill -9 -f pointcloud_to_laserscan 2>/dev/null || true
@@ -199,7 +199,7 @@ if [ "$START_SERIAL_SENDER" = "1" ] && [ -n "$SERIAL_SENDER_PORT" ]; then
 fi
 sleep 2
 
-echo ">>> [1/11] 初始化环境..."
+echo ">>> [1/11] Initializing environment..."
 echo "   BT_STYLE=$BT_STYLE"
 echo "   LOCALIZATION_MODE=$LOCALIZATION_MODE"
 echo "   USE_SIM_TIME=$USE_SIM_TIME"
@@ -218,26 +218,26 @@ if [ "$START_SERIAL_SENDER" = "1" ]; then
     echo "   START_SERIAL_SENDER=1 ($SERIAL_SENDER_PORT <- $SERIAL_SENDER_TOPIC)"
 fi
 
-echo ">>> [2/11] 设置串口权限 (如果卡在这里，请输入密码)..."
+echo ">>> [2/11] Serial permissions (if this hangs, enter your password)..."
 if [ -e /dev/ttyACM0 ]; then
     sudo chmod 777 /dev/ttyACM0
 else
-    echo "警告: 未检测到 /dev/ttyACM0，跳过权限设置"
+    echo "Warning: /dev/ttyACM0 not found, skipping permission setup"
 fi
 
-echo ">>> [3/11] 启动 MI360 激光雷达驱动..."
+echo ">>> [3/11] Starting Mid-360 LiDAR driver..."
 ros2 launch livox_ros_driver2 msg_MID360_launch.py &
 DRIVER_PID=$!
-echo ">>> 等待雷达驱动启动 (5秒)..."
+echo ">>> Waiting for LiDAR driver (5s)..."
 sleep 5
 
 if timeout 2 ros2 topic echo /livox/lidar --once > /dev/null 2>&1; then
-    echo "✅ 雷达驱动已启动并发送数据"
+    echo "✅ LiDAR driver is running and publishing"
 else
-    echo "❌ 警告：未检测到雷达数据！请检查网线连接或防火墙。"
+    echo "❌ Warning: no LiDAR data — check Ethernet cable and firewall."
 fi
 
-echo ">>> [4/11] 发布静态 TF 变换..."
+echo ">>> [4/11] Publishing static TF transforms..."
 ros2 run tf2_ros static_transform_publisher \
     --x 0 --y 0 --z 0 \
     --yaw 0 --pitch 0 --roll 0 \
@@ -247,15 +247,15 @@ ros2 run tf2_ros static_transform_publisher \
     --yaw 0 --pitch -0.873 --roll 0 \
     --frame-id body --child-frame-id base_link &
 
-echo ">>> [5/11] 启动 FAST-LIO 里程计..."
+echo ">>> [5/11] Starting FAST-LIO odometry..."
 export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
 ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml &
 sleep 5
 
-echo ">>> [6/11] 启动 Pointcloud 转 LaserScan..."
+echo ">>> [6/11] Starting pointcloud_to_laserscan..."
 ros2 run pointcloud_to_laserscan pointcloud_to_laserscan_node --ros-args -p target_frame:=base_link -p transform_tolerance:=0.01 -p min_height:=-0.4 -p max_height:=1.0 -p angle_min:=-3.1415 -p angle_max:=3.1415 -p range_min:=0.1 -p range_max:=20.0 -p use_inf:=true -p qos_overrides./cloud_in.reliability:=best_effort -r cloud_in:=/cloud_registered -r scan:=/scan &
 
-echo ">>> [7/11] 启动 Nav2 导航..."
+echo ">>> [7/11] Starting Nav2..."
 if [ "$LOCALIZATION_MODE" = "icp" ]; then
     if [ ! -f "$ICP_CONFIG_FILE" ]; then
         echo "Error: ICP config not found: $ICP_CONFIG_FILE"
@@ -271,7 +271,7 @@ else
     ros2 launch nav2_bringup bringup_launch.py use_sim_time:="$USE_SIM_TIME" map:="$MAP_FILE" params_file:="$NAV2_PARAMS_FILE" &
 fi
 
-echo ">>> [8/11] 等待 Nav2 启动 (8秒)..."
+echo ">>> [8/11] Waiting for Nav2 (8s)..."
 sleep 8
 
 if [ "$LOCALIZATION_MODE" = "icp" ]; then
@@ -364,7 +364,7 @@ PYICP
     ros2 launch rm_navigation bringup_rm_navigation.py use_sim_time:="$USE_SIM_TIME" map:="$MAP_FILE" params_file:="$NAV2_PARAMS_FILE" nav_rviz:=False &
     sleep 5
 elif [ "$PUBLISH_NAV2_INITIAL_POSE" = "1" ]; then
-    echo ">>> [8.5/11] 发布 Nav2 初始位姿..."
+    echo ">>> [8.5/11] Publishing Nav2 initial pose..."
     export NAV2_INITIAL_POSE_X NAV2_INITIAL_POSE_Y NAV2_INITIAL_POSE_YAW
     INITIAL_POSE_MSG="$(python3 - <<'PYPOSE'
 import math
@@ -404,42 +404,42 @@ if [ "$LOCALIZATION_MODE" = "amcl" ] && [ "$WAIT_MANUAL_INITIAL_POSE" = "1" ]; t
     fi
 fi
 
-echo ">>> [9/11] 启动行为树通讯适配层..."
+echo ">>> [9/11] Starting behavior-tree comm adapter..."
 echo ">>> [9/11] Starting fake_vel_transform..."
 ros2 launch fake_vel_transform fake_vel_transform.launch.py use_sim_time:="$USE_SIM_TIME" &
 sleep 2
 python3 "$SENTRY_ROOT/scripts/bt_comm_adapter.py" &
 sleep 2
 
-echo ">>> [10/11] 启动决策行为树 ($BT_STYLE)..."
+echo ">>> [10/11] Starting decision behavior tree ($BT_STYLE)..."
 ros2 launch rm_behavior_tree rm_behavior_tree.launch.py     style:="$BT_STYLE"     use_sim_time:="$USE_SIM_TIME" &
 sleep 2
 
 if [ "$START_SERIAL_SENDER" = "1" ]; then
     if [ -z "$SERIAL_SENDER_PORT" ]; then
-        echo "❌ 错误：START_SERIAL_SENDER=1 但没有提供 RADAR_PTY / SERIAL_SENDER_PORT"
+        echo "❌ Error: START_SERIAL_SENDER=1 but RADAR_PTY / SERIAL_SENDER_PORT is missing"
         exit 1
     fi
-    echo ">>> [11/11] 启动 serial_sender ($SERIAL_SENDER_PORT <- $SERIAL_SENDER_TOPIC)..."
+    echo ">>> [11/11] Starting serial_sender ($SERIAL_SENDER_PORT <- $SERIAL_SENDER_TOPIC)..."
     python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py         --port "$SERIAL_SENDER_PORT"         --ros2         --topic "$SERIAL_SENDER_TOPIC" &
 else
-    echo ">>> [11/11] 启动完成！"
+    echo ">>> [11/11] Startup complete."
 fi
 
 echo "-----------------------------------------------------"
-echo ">>> 当前主线节点已启动（Nav2 + bt_comm_adapter + rm_behavior_tree）"
-echo ">>> 默认行为树：$BT_STYLE"
-echo ">>> bridge 仍需单独在 nyush-rm-control 终端启动"
-echo ">>> 视觉程序仍需单独连 Vision PTY 启动"
-echo ">>> 如需自动写 Radar PTY，可这样运行："
+echo ">>> Main stack running (Nav2 + bt_comm_adapter + rm_behavior_tree)"
+echo ">>> Default behavior tree: $BT_STYLE"
+echo ">>> Start the bridge in a separate nyush-rm-control terminal"
+echo ">>> Start vision separately against the Vision PTY"
+echo ">>> To auto-write Radar PTY, run:"
 echo "    START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh"
 echo ""
-echo ">>> 常用实机配套终端："
+echo ">>> Typical hardware terminals:"
 echo "    1. nyush-rm-control: just sentry-bridge --port /dev/ttyACM0"
 echo "    2. nyush-rm-vision : just test detect --web --send"
 echo "    3. sentry_planner : START_SERIAL_SENDER=1 RADAR_PTY=/tmp/nyush-rm-sentry-radar ./start_robot.sh"
 echo ""
-echo ">>> 关键话题检查："
+echo ">>> Quick topic checks:"
 echo "    ros2 topic echo /robot_control --once"
 echo "    ros2 topic echo /cmd_vel_chassis_bt --once"
 echo "-----------------------------------------------------"

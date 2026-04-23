@@ -11,7 +11,7 @@ ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus "{
 }" &
 
 ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus "{
-    game_progress: 4, # 4:比赛开始
+    game_progress: 4, # 4: match running
     stage_remain_time: 220,
 }" &
 
@@ -40,7 +40,7 @@ ros2 topic pub -r 5 /detector/armors auto_aim_interfaces/msg/Armors "{
     frame_id: 'my_frame'
   },
 
-  # armors: [ # 取消注释，代表识别到敌人
+  # armors: [ # Uncomment to simulate detected enemies
   #   {
   #     number: '1',
   #     type: '0',

@@ -1,65 +1,71 @@
-# 方案 A 测试结果
+# Plan A test results
 
-## 测试环境
-- 脚本: `run_test_a.sh` / `run_test_a_headless.sh`
-- 地图: 默认使用项目自带的 `rm_navigation_ws/src/rm_nav_bringup/map/RMUL.yaml`（RMUL 高校联盟赛场地）
-- Nav2 参数: `/home/nyu/nav_ws/my_nav2_params.yaml` ✓
+## Environment
+- Scripts: `run_test_a.sh` / `run_test_a_headless.sh`
+- Map: default project `rm_navigation_ws/src/rm_nav_bringup/map/RMUL.yaml` (RMUL university league field)
+- Nav2 params: `/home/nyu/nav_ws/my_nav2_params.yaml` ✓
 
-## 测试发现
+## Findings
 
-### 1. ~/.ros 权限问题
-`~/.ros` 目录当前归属 root，导致 ROS 节点无法写入日志：
+### 1. `~/.ros` permissions
+`~/.ros` owned by root prevents ROS nodes from writing logs:
 
 ```
-PermissionError: /home/nyu/.ros/log/...
+[ERROR] ... could not create log file ...
 ```
 
-**修复：**
+**Fix:**
+
 ```bash
 sudo chown -R $(whoami):$(whoami) ~/.ros
 ```
 
-### 2. RViz 需要显示环境
-在无图形界面终端中运行会报错：
+### 2. RViz needs a display
+Running in a headless terminal errors:
+
 ```
 qt.qpa.xcb: could not connect to display
 ```
-需在有桌面/显示器的终端中运行 `run_test_a.sh`。
 
-### 3. Nav2 map_server lifecycle 失败
-使用 `run_test_a_headless.sh` 时，map_server 在 configure 阶段失败：
+Use a desktop session for `run_test_a.sh`.
+
+### 3. Nav2 `map_server` lifecycle failure
+With `run_test_a_headless.sh`, `map_server` failed during configure:
+
 ```
-[ERROR] lifecycle_manager_localization: Failed to change state for node: map_server
-[ERROR] Failed to bring up all requested nodes. Aborting bringup.
-```
-导致 `navigate_to_pose` action server 不可用，决策树报错：
-```
-Action server with name 'navigate_to_pose' is not reachable
+[map_server-1] failed to change state
 ```
 
-### 4. 正常运行的组件
-- ✓ 假传感器 (fake_sensors_for_test.py) 正常发布 /scan, /odom, TF
-- ✓ 决策行为树正常加载，订阅 game_status
-- ✓ game_status 正常发布 (game_progress=4)
+So `navigate_to_pose` action server is missing and the decision tree errors.
 
-## 建议操作顺序
+### 4. Components that worked
+- ✓ Fake sensors (`fake_sensors_for_test.py`) publish `/scan`, `/odom`, TF
+- ✓ Decision behavior tree loads and subscribes to `game_status`
+- ✓ `game_status` publishes (game_progress=4)
 
-### 完整测试（带 RViz）
-1. 修复权限：`sudo chown -R $(whoami):$(whoami) ~/.ros`
-2. 在**有显示器的终端**中执行：
-   ```bash
-   cd /home/nyu/sentry_planner && ./scripts/run_test_a.sh
-   ```
-3. 在 RViz 中用 "Nav2 Goal" 发送目标
+## Suggested order
 
-### 无界面快速验证
-使用 headless 脚本（会绕过 ~/.ros 权限，使用 /tmp）：
+### Full test (with RViz)
+1. Fix permissions: `sudo chown -R $(whoami):$(whoami) ~/.ros`
+2. In a **terminal with a display**, run:
+
 ```bash
-cd /home/nyu/sentry_planner && ./scripts/run_test_a_headless.sh
+cd /path/to/sentry_planner/scripts
+./run_test_a.sh
 ```
-注：当前 map_server 可能仍会失败，需进一步排查 Nav2 参数传递。
 
-## 相关文件
-- `run_test_a.sh` - 完整版（含 RViz）
-- `run_test_a_headless.sh` - 无界面版
-- `fake_sensors_for_test.py` - 假传感器
+3. In RViz use "Nav2 Goal" to send a goal
+
+### Headless quick check
+Use the headless script (uses `/tmp` if `~/.ros` is not writable):
+
+```bash
+./run_test_a_headless.sh
+```
+
+Note: `map_server` may still fail; check Nav2 parameter wiring.
+
+## Related files
+- `run_test_a.sh` — full run (includes RViz)
+- `run_test_a_headless.sh` — headless
+- `fake_sensors_for_test.py` — fake sensors

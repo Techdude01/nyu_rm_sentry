@@ -49,7 +49,7 @@ fi
 
 if [ ! -e "$VISION_PTY_PATH" ]; then
     echo "❌ Vision PTY not found: $VISION_PTY_PATH"
-    echo "   先确认 sentry_bridge 正在运行，并且已经创建 Vision PTY。"
+    echo "   Ensure sentry_bridge is running and has created the Vision PTY."
     exit 1
 fi
 
@@ -97,12 +97,12 @@ start_serial_sender() {
 
     if [ ! -e "$RADAR_PTY_PATH" ]; then
         echo "❌ Radar PTY not found: $RADAR_PTY_PATH"
-        echo "   先确认 sentry_bridge 正在运行，并且已经创建 Radar PTY。"
+        echo "   Ensure sentry_bridge is running and has created the Radar PTY."
         exit 1
     fi
 
     echo ""
-    echo ">>> 自动启动 serial_sender..."
+    echo ">>> Auto-starting serial_sender..."
     echo "    port              : $RADAR_PTY_PATH"
     echo "    topic             : $SERIAL_SENDER_TOPIC"
     echo "    robot_control     : $ROBOT_CONTROL_TOPIC"
@@ -129,14 +129,14 @@ case "$AUTOAIM_MODE" in
         SCAN_ENABLED=true
         ALLOW_VISION_CONTROL=true
         SEARCH_WHEN_TARGET_LOST=true
-        MODE_DESC="视觉接管 + 丢目标回搜索"
+        MODE_DESC="vision takeover + search when target lost"
         ;;
     scan)
         STOP_GIMBAL_SCAN=false
         SCAN_ENABLED=true
         ALLOW_VISION_CONTROL=false
         SEARCH_WHEN_TARGET_LOST=false
-        MODE_DESC="纯扫描"
+        MODE_DESC="scan only"
         ;;
     idle)
         STOP_GIMBAL_SCAN=true
@@ -145,7 +145,7 @@ case "$AUTOAIM_MODE" in
         SEARCH_WHEN_TARGET_LOST=false
         AUTOAIM_SCAN_YAW_RATE_DEG_S=0.0
         AUTOAIM_SEARCH_PITCH_DEG=0.0
-        MODE_DESC="空闲保持"
+        MODE_DESC="idle hold"
         ;;
     *)
         echo "❌ Unsupported AUTOAIM_MODE: $AUTOAIM_MODE"
@@ -154,24 +154,24 @@ case "$AUTOAIM_MODE" in
         ;;
 esac
 
-echo ">>> 启动自瞄模式 keepalive..."
+echo ">>> Starting auto-aim mode keepalive..."
 echo "    mode              : $AUTOAIM_MODE ($MODE_DESC)"
 echo "    robot_control     : $ROBOT_CONTROL_TOPIC @ ${ROBOT_CONTROL_RATE}Hz"
 echo "    scan_yaw_rate     : ${AUTOAIM_SCAN_YAW_RATE_DEG_S} deg/s"
 echo "    search_pitch      : ${AUTOAIM_SEARCH_PITCH_DEG} deg"
 echo "    chassis_spin_vel  : ${AUTOAIM_CHASSIS_SPIN_VEL} rad/s"
 echo ""
-echo ">>> 前置条件提醒："
-echo "    1. bridge 已启动"
-echo "    2. 右拨杆不要放在本地自转档"
-echo "    3. 如果 /robot_control 还没人订阅，脚本会自动补起 serial_sender"
+echo ">>> Prerequisites:"
+echo "    1. Bridge is running"
+echo "    2. Do not leave the right stick in local spin mode"
+echo "    3. If nothing subscribes to /robot_control yet, this script auto-starts serial_sender"
 
 ros2 topic pub -r "$ROBOT_CONTROL_RATE" "$ROBOT_CONTROL_TOPIC" rm_decision_interfaces/msg/RobotControl \
     "{stop_gimbal_scan: $STOP_GIMBAL_SCAN, chassis_spin_vel: $AUTOAIM_CHASSIS_SPIN_VEL, scan_enabled: $SCAN_ENABLED, allow_vision_control: $ALLOW_VISION_CONTROL, search_when_target_lost: $SEARCH_WHEN_TARGET_LOST, scan_yaw_rate_deg_s: $AUTOAIM_SCAN_YAW_RATE_DEG_S, search_pitch_deg: $AUTOAIM_SEARCH_PITCH_DEG}" &
 
 sleep 1
 echo ""
-echo ">>> 话题检查："
+echo ">>> Topic check:"
 robot_control_info="$(get_robot_control_info)"
 printf '%s\n' "$robot_control_info"
 robot_control_subscribers="$(get_robot_control_subscribers "$robot_control_info")"
@@ -180,7 +180,7 @@ if [ "$AUTO_START_SERIAL_SENDER" = "1" ] && [ "$robot_control_subscribers" = "0"
     start_serial_sender
     sleep 1
     echo ""
-    echo ">>> 等待 /robot_control 订阅者上线..."
+    echo ">>> Waiting for /robot_control subscriber..."
     robot_control_info="$(wait_for_robot_control_subscriber "$SERIAL_SENDER_WAIT_S" || true)"
     printf '%s\n' "$robot_control_info"
     robot_control_subscribers="$(get_robot_control_subscribers "$robot_control_info")"
@@ -188,10 +188,10 @@ fi
 
 if [ "$REQUIRE_ROBOT_CONTROL_SUBSCRIBER" = "1" ] && [ "$robot_control_subscribers" = "0" ]; then
     echo ""
-    echo "❌ $ROBOT_CONTROL_TOPIC 当前没有订阅者。"
-    echo "   这意味着 allow_vision_control / search_when_target_lost 不会被转发到下位机。"
-    echo "   已尝试自动启动 serial_sender，但订阅仍未建立。"
-    echo "   请检查 bridge、Radar PTY、以及 serial_sender 依赖环境。"
+    echo "❌ $ROBOT_CONTROL_TOPIC has no subscribers."
+    echo "   allow_vision_control / search_when_target_lost will not reach the MCU."
+    echo "   Auto-start of serial_sender was attempted but no subscription appeared."
+    echo "   Check bridge, Radar PTY, and serial_sender dependencies."
     exit 1
 fi
 
@@ -202,7 +202,7 @@ if [ "$START_VISION" = "1" ]; then
     fi
 
     echo ""
-    echo ">>> 启动视觉跟随：just test detect --web --send"
+    echo ">>> Starting vision pipeline: just test detect --web --send"
     echo "    web: http://127.0.0.1:${VISION_WEB_PORT}"
 
     vision_args=(test detect --web --send "--web-port=${VISION_WEB_PORT}")
@@ -216,6 +216,6 @@ if [ "$START_VISION" = "1" ]; then
     just "${vision_args[@]}"
 else
     echo ""
-    echo ">>> START_VISION=0，仅保持自瞄模式话题发布。按 Ctrl+C 退出。"
+    echo ">>> START_VISION=0: only publishing auto-aim /robot_control. Press Ctrl+C to exit."
     wait
 fi

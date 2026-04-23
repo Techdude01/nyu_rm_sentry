@@ -1,7 +1,7 @@
 /**
   ****************************(C) COPYRIGHT 2023 Polarbear*************************
   * @file       rune_detector.hpp
-  * @brief      能量机关检测模块检测图片中的能量机关靶标
+  * @brief      Energy rune detector: finds rune strike plates in images
   * @note
   * @history
   *  Version    Date            Author          Modification

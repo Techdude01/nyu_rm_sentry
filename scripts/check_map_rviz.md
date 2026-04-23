@@ -1,68 +1,60 @@
-# RViz 地图不显示 - 排查指南
+# RViz map not showing — troubleshooting
 
-## 1. 确认 /map 是否发布
+## 1. Confirm `/map` is published
 
 ```bash
-# 查看是否有 /map 话题
 ros2 topic list | grep map
-
-# 查看 /map 是否有数据（等待几秒）
 ros2 topic echo /map --once
-
-# 查看 /map 发布频率
 ros2 topic hz /map
 ```
 
-若没有 `/map` 或一直无数据，说明 map_server 或 slam_toolbox 未正常工作。
+If there is no `/map` or it never gets data, `map_server` or `slam_toolbox` is not healthy.
 
 ---
 
-## 2. 方案 A（假传感器 + 预存地图）
+## 2. Plan A (fake sensors + saved map)
 
-- 地图由 **map_server** 从 yaml 加载
-- 若 map_server 未启动或报错，`/map` 不会发布
-- 检查：`ros2 topic list` 中应有 `/map`
+- The map is loaded from yaml by **map_server**
+- If `map_server` fails or is not running, `/map` is not published
+- Check: `ros2 topic list` should include `/map`
 
-**可能原因**：Nav2 controller 之前失败导致 lifecycle 未完全激活，map_server 可能未正常启动。  
-**处理**：重启整个测试，或单独起 map_server 做验证。
-
----
-
-## 3. 方案 B（Gazebo 仿真 mapping 模式）
-
-- 地图由 **slam_toolbox** 实时构建
-- slam_toolbox 需要 **/scan**
-- 数据链：Gazebo Livox → Fast-LIO → /cloud_registered → 点云分割 → pointcloud_to_laserscan → **/scan**
-
-**可能原因**：`segmentation` 的 `input_topic` 为 `/livox/lidar/pointcloud`，仿真中该话题可能不存在（仿真多发布 CustomMsg 到 `/livox/lidar`），导致无 /scan，slam 不建图，/map 为空或很晚才出现。
+**Likely cause:** Nav2 controller failed earlier so lifecycle never fully activated; `map_server` may not be up.  
+**Fix:** Restart the full test, or bring up `map_server` alone to verify.
 
 ---
 
-## 4. RViz 设置检查
+## 3. Plan B (Gazebo simulation, mapping mode)
 
-1. **Fixed Frame**：应为 `map`
-   - 左侧 Global Options → Fixed Frame → 选 `map`
-   - 若选 `base_link` 等，地图可能不显示或错位
+- The map is built live by **slam_toolbox**
+- `slam_toolbox` needs **/scan**
+- Chain: Gazebo Livox → Fast-LIO → `/cloud_registered` → segmentation → pointcloud_to_laserscan → **/scan**
 
-2. **Map 显示**
-   - 左侧 Displays 里确认有 "Map"
-   - 展开 Map，Topic 应为 `/map`
-   - 确认 Map 已勾选启用 (Enable)
-
-3. **QoS 不匹配**
-   - 若 Map 显示为 "Status: Ok" 但无画面，尝试：
-   - 添加 Map 时，QoS 选 `transient_local` + `reliable`
+**Likely cause:** `segmentation` `input_topic` is `/livox/lidar/pointcloud`, which may be missing in sim (sim often publishes `CustomMsg` on `/livox/lidar` only), so no `/scan`, no map, `/map` empty or very late.
 
 ---
 
-## 5. TF 检查
+## 4. RViz display settings
+
+1. **Fixed Frame** should be `map`
+   - Left: Global Options → Fixed Frame → `map`
+   - If you use `base_link` etc., the map may be missing or misaligned
+
+2. **Map display**
+   - Under Displays, ensure "Map" exists
+   - Expand Map; Topic should be `/map`
+   - Map must be enabled (checkbox)
+
+3. **QoS mismatch**
+   - If Map shows "Status: Ok" but no image, try:
+   - When adding Map, set QoS to `transient_local` + `reliable`
+
+---
+
+## 5. TF check
 
 ```bash
-# 查看 TF 树
 ros2 run tf2_tools view_frames
-
-# 检查 map 是否在 TF 中
-ros2 run tf2_ros tf2_echo map base_link
+ros2 run tf2_ros tf2_echo map odom
 ```
 
-Map 显示不依赖 TF，但若 Fixed Frame 为 `map` 且 `map` 不在 TF 中，其他显示可能报错。
+Map display does not strictly need TF, but if Fixed Frame is `map` and `map` is missing from TF, other displays may error.

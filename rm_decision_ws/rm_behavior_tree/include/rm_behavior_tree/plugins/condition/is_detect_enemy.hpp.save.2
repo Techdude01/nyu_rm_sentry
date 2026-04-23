@@ -8,8 +8,8 @@ namespace rm_behavior_tree
 {
 
 /**
- * @brief condition节点，用于判断视野内是否存在有效敌人
- * @param[in] message 识别模块的检测结果序列
+ * @brief Condition: whether the detector reports any valid enemy armor.
+ * @param[in] message `Armors` from the vision stack
  */
 class IsDetectEnemyAction : public BT::SimpleConditionNode
 {

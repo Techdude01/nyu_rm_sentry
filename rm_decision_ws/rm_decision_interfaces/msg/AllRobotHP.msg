@@ -1,4 +1,4 @@
-# v1.6.1 0x0003 机器人血量数据
+# v1.6.1 0x0003 Robot hit points (all)
 
 uint16 red_1_robot_hp
 uint16 red_2_robot_hp

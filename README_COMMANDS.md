@@ -1,122 +1,134 @@
-# NYUSH 哨兵：常用命令与数据流说明
 
-最后更新：2026-04-11  
 
-本文与 [`communication command.txt`](communication%20command.txt) 配合使用：**这里写清原理、数据流与各参数含义**；`communication command.txt` 侧重**可复制命令片段**。协议细节仍以 [`README_COMMUNICATION.md`](README_COMMUNICATION.md) 为准。
+# NYUSH sentry: common commands and data flow
 
----
+Last updated: 2026-04-11
 
-## 0. 文档定位（五文分工）
-
-| 文档 | 职责 |
-|------|------|
-| [README.md](README.md) | **中央索引**：一页总览、架构简图、编译顺序、最短启动 |
-| [README_COMMUNICATION.md](README_COMMUNICATION.md) | **通讯与协议全文**：帧、PTY、`serial_sender`、`bt_comm_adapter`（**深度**见该文 **§5～§15**） |
-| [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) | **行为树全文**：XML、节点、`RobotControl` 语义、Groot2、**§5.1** 坐标与 watcher |
-| [README_LIDAR.md](README_LIDAR.md) | **激光雷达 + Nav2**：Mid360、FAST-LIO、参数、**§10.8** 实机定位前提 |
-| **本文** | **命令与数据流全书**：可执行命令、环境变量、脚本对照、端到端链路摘要 |
-
-**如何选读：** 要**复制命令**、理解 **`MAP_FILE`/起终点**、**实机分阶段步骤** → **本文**；协议位域与 MCU 帧 → [README_COMMUNICATION.md](README_COMMUNICATION.md)；**树怎么切分支、XML 里写什么** → [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)；雷达与 costmap 现象 → [README_LIDAR.md](README_LIDAR.md)。
-
-**本文章节索引（便于跳转）：**
-
-| 章节 | 内容 |
-|------|------|
-| **§1** | MCU / LiDAR / 视觉 / BT / 上下位机，四条路径 A–D |
-| **§2** | Bridge 自动选口与 PTY |
-| **§3** | 视觉 Web、与 BT/`RobotControl` 分工 |
-| **§4** | `nav_ws/start_robot.sh` 环境变量；**§4.4** `11_map` / `RMUL2026`、PCD·PGM·YAML、换图与 BT 起终点 |
-| **§5～§6** | 裁判话题、`watch_*` 与热键 |
-| **§7** | `rotate_pcd` → `pcd2pgm` → `map_saver_cli`；**§7.4** `map_point_picker.py` |
-| **§8～§11** | `autostart`、脚本对照表、最小终端组合、`communication command.txt` 提示 |
-| **§12** | **实机联调**：台架→小场地→全场、安全、终端分工、检查清单、伪造裁判 |
-| **§13** | **四专题分工速查表**（问题 → 打开哪份 README） |
-
-**与另文的边界：** 本文 **§1** 给**总链路**；**SP/SX/ST 字节级定义**以 [README_COMMUNICATION.md](README_COMMUNICATION.md) 为准。**§4.4、§7** 给地图与建图**命令**；**Gazebo RMUL2026、Sim2Real 第一步、Groot2 与仿真的关系**以 [README_LIDAR.md §6.4](README_LIDAR.md#nyush-gazebo-sim2real) 为准（逐步命令另见 [mid360 command.txt](mid360%20command.txt)）。**倾斜雷达 TF、性能指标**见 [README_LIDAR.md](README_LIDAR.md)。
+Use this file together with `[communication command.txt](communication%20command.txt)`: **principles, data flow, and parameter meaning live here**; `communication command.txt` is mainly **copy-paste snippets**. Protocol details remain authoritative in `[README_COMMUNICATION.md](README_COMMUNICATION.md)`.
 
 ---
 
-## 1. 完整数据链路与职责划分
+## 0. How the five READMEs split work
 
-### 1.1 物理分层：谁在哪个「电脑」上跑
 
-| 层级 | 硬件/进程 | 说明 |
-|------|-----------|------|
-| **上位机（工控机 NUC 等）** | ROS 2：雷达驱动、FAST-LIO、Nav2、行为树、`serial_sender`、`bt_comm_adapter` | 定位、规划、决策；把**速度 + 模式字**打成串口侧协议 |
-| **桥接（一般跑在上位机）** | `sentry_bridge.py` | **唯一**占用 USB CDC；拆成 **Vision PTY** 与 **Radar PTY** |
-| **下位机** | STM32（`nyush-rm-control`） | 解析 **SX/ST、SP**；融合命令；驱动底盘/云台/射击；读裁判 |
+| Document                                                     | Role                                                                                                      |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| [README.md](README.md)                                       | **Central index**: one-page overview, diagram, build order, shortest startup                              |
+| [README_COMMUNICATION.md](README_COMMUNICATION.md)           | **Comms and protocol**: frames, PTY, `serial_sender`, `bt_comm_adapter` (depth in that file **§5–§15**)   |
+| [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) | **Behavior trees**: XML, nodes, `RobotControl` meaning, Groot2, **§5.1** coordinates and watcher          |
+| [README_LIDAR.md](README_LIDAR.md)                           | **LiDAR + Nav2**: Mid360, FAST-LIO, parameters, **§10.8** hardware localization prerequisites             |
+| **This file**                                                | **Commands and data flow**: runnable commands, environment variables, script map, end-to-end path summary |
 
-**LiDAR（Mid360）**：挂在车上，**网线**进工控机，**不经过 MCU USB**。点云/里程计以 ROS **话题与 TF** 存在，供 Nav2 与 BT 使用。
+
+**How to choose:** copy commands, understand `**MAP_FILE` / goals**, phased hardware steps → **this file**; protocol fields and MCU frames → [README_COMMUNICATION.md](README_COMMUNICATION.md); how the tree branches and what XML says → [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md); LiDAR and costmap behavior → [README_LIDAR.md](README_LIDAR.md).
+
+**Section index**
+
+
+| Section    | Content                                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **§1**     | MCU / LiDAR / vision / BT / host–MCU, four paths A–D                                                                   |
+| **§2**     | Bridge auto port pick and PTY                                                                                          |
+| **§3**     | Vision web UI and how it relates to BT / `RobotControl`                                                                |
+| **§4**     | `nav_ws/start_robot.sh` environment variables; **§4.4** `11_map` / `RMUL2026`, PCD / PGM / YAML, map swap and BT goals |
+| **§5–§6**  | Referee topics, `watch_`*, hotkeys                                                                                     |
+| **§7**     | `rotate_pcd` → `pcd2pgm` → `map_saver_cli`; **§7.4** `map_point_picker.py`                                             |
+| **§8–§11** | `autostart`, script table, minimal terminals, `communication command.txt` notes                                        |
+| **§12**    | **Hardware bring-up**: bench → small field → full field, safety, terminals, checklist, mock referee                    |
+| **§13**    | **Which README for which question**                                                                                    |
+
+
+**Boundaries:** **§1** here is the **end-to-end overview**; **SP/SX/ST** byte layout is in [README_COMMUNICATION.md](README_COMMUNICATION.md). **§4.4, §7** are map and mapping **commands**; **Gazebo RMUL2026, Sim2Real first step, Groot2 vs sim** follow [README_LIDAR.md §6.4](README_LIDAR.md#nyush-gazebo-sim2real) (step-by-step also in [mid360 command.txt](mid360%20command.txt)). **Tilted LiDAR TF and performance** → [README_LIDAR.md](README_LIDAR.md).
 
 ---
 
-### 1.2 四条主数据路径（从传感器到执行）
+## 1. End-to-end data paths and responsibilities
+
+### 1.1 Physical layers: what runs where
+
+
+| Layer                        | Hardware / process                                                          | Notes                                                                                  |
+| ---------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Host (NUC, etc.)**         | ROS 2: LiDAR driver, FAST-LIO, Nav2, BT, `serial_sender`, `bt_comm_adapter` | Localization, planning, decision; packs **velocity + mode** into serial-side protocol  |
+| **Bridge (usually on host)** | `sentry_bridge.py`                                                          | **Only** process holding USB CDC; splits **Vision PTY** and **Radar PTY**              |
+| **MCU**                      | STM32 (`nyush-rm-control`)                                                  | Parses **SX/ST, SP**; fuses commands; drives chassis / gimbal / shooter; reads referee |
+
+
+**LiDAR (Mid360)** is on the robot, **Ethernet** to the host, **not** via MCU USB. Point cloud / odometry live as ROS **topics and TF** for Nav2 and BT.
+
+---
+
+### 1.2 Four main data paths (sensor to actuation)
 
 ```text
-【A — 定位与导航 / 底盘平移】
-Mid360 ─(以太网)→ livox_ros_driver2 → FAST-LIO → /cloud_registered、里程计、TF
-       → pointcloud_to_laserscan → /scan → Nav2 → /cmd_vel
-       → fake_vel_transform → /cmd_vel_chassis
-       → bt_comm_adapter（并入 chassis_spin_vel）→ /cmd_vel_chassis_bt
-       → serial_sender → Radar PTY → bridge → MCU
-       → SX(vx,vy,wz,…) → 底盘执行（MCU 内 swerve 等解算）
+[A — Localization / navigation / chassis translation]
+Mid360 -(Ethernet)-> livox_ros_driver2 -> FAST-LIO -> /cloud_registered, odometry, TF
+       -> pointcloud_to_laserscan -> /scan -> Nav2 -> /cmd_vel
+       -> fake_vel_transform -> /cmd_vel_chassis
+       -> bt_comm_adapter (merge chassis_spin_vel) -> /cmd_vel_chassis_bt
+       -> serial_sender -> Radar PTY -> bridge -> MCU
+       -> SX(vx,vy,wz,...) -> chassis (swerve solve on MCU)
 
-【B — 行为树决策 / 模式与底盘旋转意图】
-BT 订阅 /game_status、/robot_status（等）→ 逻辑判断
-BT 发布 /goal_pose → Nav2（只影响路径 A，不经串口）
-BT 发布 /robot_control → serial_sender → A3 功能帧 → Radar PTY → bridge → MCU
-       → SX.control_flags、scan_*、allow_vision_control、…
-       → robot_cmd.c：是否采纳视觉、BT 扫描、与 vx/vy/wz 一起参与整机状态机
+[B — Behavior tree / modes and chassis spin intent]
+BT subscribes /game_status, /robot_status, ... -> logic
+BT publishes /goal_pose -> Nav2 (path A only, not serial)
+BT publishes /robot_control -> serial_sender -> A3 feature frame -> Radar PTY -> bridge -> MCU
+       -> SX.control_flags, scan_*, allow_vision_control, ...
+       -> robot_cmd.c: whether vision is honored, BT scan, together with vx/vy/wz in state machine
 
-【C — 视觉伺服 / 云台角与开火】
-相机 → nyush-rm-vision → SP(VisionToGimbal) → Vision PTY → bridge → MCU
-     → 在「允许视觉接管」等标志有效时，用 SP 的 yaw/pitch/mode 做跟瞄、开火
-MCU → SP(GimbalToVision) → 视觉闭环（姿态、弹速等）
+[C — Vision servo / gimbal angles and firing]
+Camera -> nyush-rm-vision -> SP(VisionToGimbal) -> Vision PTY -> bridge -> MCU
+     -> when allow flags valid, SP yaw/pitch/mode for track and fire
+MCU -> SP(GimbalToVision) -> vision loop (pose, bullet speed, etc.)
 
-【D — 裁判与机载状态回上位机】
-裁判 → MCU → ST → bridge → Radar PTY 侧 0x5C/0x5D
-     → serial_sender → /game_status、/robot_status → BT 订阅
+[D — Referee and robot status to host]
+Referee -> MCU -> ST -> bridge -> Radar PTY side 0x5C/0x5D
+     -> serial_sender -> /game_status, /robot_status -> BT subscribes
 ```
 
-A 与 B 在 **Radar PTY** 合并为**速度帧 + A3**；C 独立走 **Vision PTY**；D 与 A/B **同经 Radar 回传**，在 sender 里解成 ROS。
+A and B merge on **Radar PTY** as **velocity frame + A3**; C uses **Vision PTY** alone; D shares the **Radar return path** with A/B and is unpacked to ROS in the sender.
 
 ---
 
-### 1.3 各模块负责什么（速查）
+### 1.3 Module responsibilities (quick reference)
 
-| 模块 | 位置 | 负责内容 | 主要对外接口 |
-|------|------|----------|----------------|
-| **LiDAR + 驱动** | 车上 + 工控机 | 点云 | `/livox/lidar` 等 |
-| **FAST-LIO** | 工控机 | 里程计、点云配准 | `/cloud_registered`、odom、TF |
-| **pointcloud_to_laserscan** | 工控机 | 2D 激光 | `/scan` |
-| **Nav2** | 工控机 | 规划、避障 | `/cmd_vel` |
-| **fake_vel_transform** | 工控机 | 速度系变换 | `/cmd_vel_chassis` |
-| **bt_comm_adapter** | 工控机 | 速度 + 小陀螺合并 | `/cmd_vel_chassis_bt` |
-| **rm_behavior_tree** | 工控机 | 高层战术、发点、发 RobotControl | `/goal_pose`、`/robot_control` |
-| **serial_sender --ros2** | 工控机 | ROS ↔ 雷达侧 PTY；状态回灌 | 19B 速度 + A3 |
-| **sentry_bridge** | 工控机 | 单 USB ↔ 双 PTY；帧转换 | SP / SX / ST |
-| **nyush-rm-vision** | 工控机 | 检测、跟踪、瞄准 | SP |
-| **MCU** | C 板 | 执行与融合 | SX+SP+RC→底盘/云台 |
 
----
+| Module                      | Where           | Responsibility                          | Main interface                 |
+| --------------------------- | --------------- | --------------------------------------- | ------------------------------ |
+| **LiDAR + driver**          | On robot + host | Point cloud                             | `/livox/lidar`, etc.           |
+| **FAST-LIO**                | Host            | Odometry, registration                  | `/cloud_registered`, odom, TF  |
+| **pointcloud_to_laserscan** | Host            | 2D laser                                | `/scan`                        |
+| **Nav2**                    | Host            | Planning, avoidance                     | `/cmd_vel`                     |
+| **fake_vel_transform**      | Host            | Velocity frame change                   | `/cmd_vel_chassis`             |
+| **bt_comm_adapter**         | Host            | Merge velocity + spin                   | `/cmd_vel_chassis_bt`          |
+| **rm_behavior_tree**        | Host            | High-level tactics, goals, RobotControl | `/goal_pose`, `/robot_control` |
+| **serial_sender --ros2**    | Host            | ROS ↔ Radar PTY; status inject          | 19 B velocity + A3             |
+| **sentry_bridge**           | Host            | One USB ↔ two PTYs; frame conversion    | SP / SX / ST                   |
+| **nyush-rm-vision**         | Host            | Detect, track, aim                      | SP                             |
+| **MCU**                     | C board         | Execute and fuse                        | SX+SP+RC -> chassis / gimbal   |
 
-### 1.4 RobotControl（SX）与 SP 的分工
-
-| 通道 | 典型内容 | 谁产生 |
-|------|----------|--------|
-| **SX / RobotControl** | 是否允许视觉接管、扫描参数、`chassis_spin_vel`、标志位 | BT → sender |
-| **SP** | 目标 yaw/pitch、自瞄/开火 mode | Vision |
-
-MCU 用 **SX 标志** 决定 **`vision_enabled`** 等；为真时才把 **SP 跟瞄**接到云台环（见 `nyush-rm-control/application/cmd/robot_cmd.c`）。
 
 ---
 
-### 1.5 简化逻辑图（与 §1.2 对照）
+### 1.4 RobotControl (SX) vs SP
+
+
+| Channel               | Typical content                                      | Producer     |
+| --------------------- | ---------------------------------------------------- | ------------ |
+| **SX / RobotControl** | Vision allow, scan params, `chassis_spin_vel`, flags | BT -> sender |
+| **SP**                | Target yaw/pitch, auto-aim / fire mode               | Vision       |
+
+
+MCU uses **SX flags** for `**vision_enabled`**, etc.; only when true does **SP tracking** feed the gimbal loop (see `nyush-rm-control/application/cmd/robot_cmd.c`).
+
+---
+
+### 1.5 Simplified logic (see §1.2)
 
 ```text
                     ┌───────────── BT (rm_behavior_tree)
-                    │  订阅: /game_status, /robot_status, …
-                    │  发布: /goal_pose, /robot_control
+                    │  sub: /game_status, /robot_status, …
+                    │  pub: /goal_pose, /robot_control
                     └──────┬───────────────────────┬──────────────┐
                            │                       │
                            ▼                       ▼
@@ -136,90 +148,92 @@ MCU 用 **SX 标志** 决定 **`vision_enabled`** 等；为真时才把 **SP 跟
                               serial_sender.py --ros2
                                         │
                                         ▼
-                              Radar PTY → sentry_bridge → MCU (SX)
+                              Radar PTY -> sentry_bridge -> MCU (SX)
                                         ▲
-MCU 裁判/状态 ◄── ST ── bridge ──► 0x5C/0x5D ──► serial_sender ──► /game_status, /robot_status
+MCU referee/status <- ST -- bridge --> 0x5C/0x5D --> serial_sender --> /game_status, /robot_status
 
-视觉: nyush-rm-vision ◄── SP ──► Vision PTY ──► bridge ──► MCU
+Vision: nyush-rm-vision <-> SP <-> Vision PTY <-> bridge <-> MCU
 ```
 
 ---
 
-## 2. 启动 Bridge（不要写死 `/dev/ttyACM0`）
+## 2. Starting the bridge (do not hard-code `/dev/ttyACM0`)
 
-### 2.1 推荐命令
+### 2.1 Recommended command
 
 ```bash
 cd /path/to/nyush-rm-control
 just sentry-bridge
 ```
 
-等价于调用 `sentry_bridge.py` **不传 `--port`**。
+Same as running `sentry_bridge.py` **without `--port`**.
 
-### 2.2 内部行为（自动选口）
+### 2.2 Auto port behavior
 
-`sentry_bridge.py` 中 `--port` 的 help 写明：**默认自动检测**。实现上会枚举 USB 串口并按优先级挑选 MCU CDC（见脚本内 `resolve_serial_port` / `port_priority`）。  
+`sentry_bridge.py` `--port` help: **auto-detect by default**. Implementation enumerates USB serial ports and picks MCU CDC by priority (see `resolve_serial_port` / `port_priority` in the script).
 
-USB 重新插拔后设备名可能从 `ttyACM0` 变成 `ttyACM1` 等，**自动选口**可避免改命令。
+After USB replug, `ttyACM0` may become `ttyACM1`; **auto pick** avoids editing commands.
 
-### 2.3 何时仍需要手写 `--port`
+### 2.3 When to pass `--port` explicitly
 
-- 多台串口设备同时插入，自动选错时：  
-  `just sentry-bridge --port /dev/ttyACM1`  
-- 调试时指定固定设备。
+- Several USB serial devices plugged; wrong auto pick: `just sentry-bridge --port /dev/ttyACM1`
+- Debug with a fixed device.
 
-### 2.4 Bridge 启动后你要记下的东西
+### 2.4 After bridge starts, write these down
 
-终端会打印 **MCU serial**（实际打开的口）、**Vision PTY**、**Radar PTY**。  
-若未加 `--no-links`，通常还有稳定软链接（如 `/tmp/nyush-rm-sentry-radar`），**导航侧 `RADAR_PTY` 优先用软链接**，避免 `/dev/pts/N` 每次变。
+The terminal prints **MCU serial** (real port), **Vision PTY**, **Radar PTY**. Unless `--no-links`, stable symlinks (e.g. `/tmp/nyush-rm-sentry-radar`) exist; `**RADAR_PTY` for nav should prefer the symlink** so `/dev/pts/N` does not change every restart.
 
 ---
 
-## 3. 视觉：`just test detect --web --send`
+## 3. Vision: `just test detect --web --send`
 
-### 3.1 命令与 Web
+### 3.1 Command and web UI
 
 ```bash
 cd /path/to/nyush-rm-vision
 just test detect --web --send
 ```
 
-- **`--web`**：在本地起 HTTP 服务，**默认** `http://127.0.0.1:8888`（以当前 vision 仓库 justfile 为准），用于看检测画面、调试参数。  
-- **`--send`**：把视觉结果通过串口协议发给下位机；**串口必须是 Vision PTY**（在视觉配置里把 `com_port` 指到 bridge 打印的 Vision 链，或稳定软链接）。
+- `**--web**`: local HTTP server, **default** `http://127.0.0.1:8888` (per vision repo justfile), for debug view and tuning.
+- `**--send`**: send vision over serial protocol; **port must be Vision PTY** (set `com_port` in vision config to the bridge Vision path or stable symlink).
 
-### 3.2 和 BT 怎么互动（概念上）：**有关系，但默认树不读装甲板话题**
+### 3.2 Relation to BT: related, but default tree does not subscribe to armor
 
-先分清两件事：
+Two different things:
 
-1. **「识别到目标 / 自瞄」** —— 主要由 **视觉程序 → Vision PTY → SP → 下位机** 完成；检测、跟踪、发给 MCU 的云台量在这条链上。  
-2. **「行为树要不要根据『有没有敌人』切分支」** —— 这才涉及 BT 是否订阅 **`/detector/armors`**（或其它视觉 ROS 话题）。
+1. **“Target acquired / auto-aim”** — mainly **vision → Vision PTY → SP → MCU**; detection, tracking, gimbal commands on this path.
+2. **“Should BT branch on enemy seen?”** — that is whether BT subscribes `**/detector/armors`** (or other vision topics).
 
-**`center_attack_simple.xml` 里只有 `SubRobotStatus` 与 `SubGameStatus`，没有 `SubArmors`，也没有 `IsDetectEnemy`。** 因此：
+`**center_attack_simple.xml` only has `SubRobotStatus` and `SubGameStatus`, no `SubArmors`, no `IsDetectEnemy`.** So:
 
-- **不是没有「识别目标」**，而是 **不把「是否看到装甲」写进这棵树的判断条件**。  
-- 到中心驻守时，BT 通过 **`RobotControl`** 设置例如 **`allow_vision_control=True`、`stop_gimbal_scan=True`** 等，相当于下发 **「允许视觉自瞄接管云台」的模式位**；**真正看到目标并跟瞄**仍由 **视觉 + SP** 完成，**不依赖** BT 订阅装甲板。  
-- 行进阶段若 **`allow_vision_control=False`**，更偏 **扫描**；视觉仍可运行、网页仍可看检测，但是否按队内逻辑接管由 **MCU + 这些标志** 共同决定（以固件为准）。
+- Vision **is** used; the tree **does not** put “saw armor” in conditions.
+- At center hold, BT sets `**RobotControl`** e.g. `**allow_vision_control=True`, `stop_gimbal_scan=True**` as **mode bits**; **actual track** is still **vision + SP**, not BT armor subscription.
+- In transit with `**allow_vision_control=False`**, behavior leans **scan**; vision can still run and the web UI still shows detections; MCU + flags decide takeover (firmware is source of truth).
 
-**装甲板话题和 BT 何时强相关？**  
-在使用 **`SubArmors` + `IsDetectEnemy`** 的旧树（如 **`retreat_attack_left.xml`**）时：BT **订阅** `/detector/armors`，用「列表是否为空」等做 **见敌 / 不见敌** 的战术分支。
+**When armor topic matters for BT:** legacy trees with `**SubArmors` + `IsDetectEnemy`** (e.g. `**retreat_attack_left.xml**`): BT **subscribes** `/detector/armors` for **enemy seen / not** branches.
 
-**可选第三条路径：** `bt_comm_adapter.py` 可把 **`auto_aim_target_pos`** 转成 **`/detector/armors`**，供需要该话题的树使用；与 **SP 直连 MCU** 是不同通道。
+**Optional third path:** `bt_comm_adapter.py` can synthesize `**/detector/armors`** from `**auto_aim_target_pos**` for trees that need it; different from **SP straight to MCU**.
 
-**小结：**  
-- **视觉与 BT 有关系**：BT 用 **`/robot_control`** 管 **扫描、是否允许自瞄接管、小陀螺** 等 **高层模式**；视觉管 **感知与 SP 控制量**。  
-- **默认简单树不订阅装甲板**：不是「视觉没用」，而是 **故意不把见敌写进 BT**，把 **目标级闭环** 放在 **视觉–MCU**，BT 侧重 **赛况、血量、到点、回家**。
+**Summary:**
 
-| 路径 | 作用 |
-|------|------|
-| 视觉 → MCU | **SP**：云台与开火相关控制，**不经过** BT 节点。 |
-| BT → MCU（经 `serial_sender`） | **SX** / **RobotControl**：`scan_*`、`allow_vision_control` 等 **模式与权限**。 |
-| BT ← `/detector/armors` | **仅旧树**等 XML 显式写了 `SubArmors` / 见敌条件时。 |
+- **Vision and BT interact:** BT uses `**/robot_control`** for **scan, allow auto-aim, spin**; vision owns **perception and SP**.
+- **Default simple tree skips armor subscription** on purpose; **target loop** is **vision–MCU**; BT focuses **match state, HP, go-to-point, home**.
+
+
+| Path                           | Role                                                                         |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| Vision → MCU                   | **SP**: gimbal and fire control, **not** through BT nodes.                   |
+| BT → MCU (via `serial_sender`) | **SX** / **RobotControl**: `scan_`*, `allow_vision_control`, etc. **modes**. |
+| BT ← `/detector/armors`        | **Legacy trees** only when XML includes `SubArmors` / enemy checks.          |
+
 
 ---
 
-## 4. `~/nav_ws/start_robot.sh`：调试用环境变量详解
 
-以下命令是你常用的「**bridge +（可选）vision 已开** → **自建图 + 起 Nav + BT**」形态：
+
+## 4. `~/nav_ws/start_robot.sh`: environment variables for debugging
+
+Typical pattern: **bridge + (optional) vision running** → **your map + Nav + BT**:
 
 ```bash
 cd ~/nav_ws
@@ -235,82 +249,88 @@ START_FAKE_VEL_TRANSFORM=1 \
 ./start_robot.sh
 ```
 
-### 4.1 各变量含义
+### 4.1 Variable reference
 
-| 变量 | 含义 |
-|------|------|
-| **`MAP_FILE`** | Nav2 `map_server` 加载的 **地图入口 yaml**（内含对 **pgm** 的引用）。**日常自建图**见下表 **`11_map`**；**赛场**见 **`RMUL2026.yaml`**。详见 **§4.4**。 |
-| **`BT_STYLE`** | 行为树 XML **不含 `.xml`**。`center_attack_fullstack` 为队内全栈树；`center_attack_simple` 为简化树（在 `sentry_planner` 的 `start_robot.sh` 默认更常见）。 |
-| **`BT_START_GOAL` / `BT_END_GOAL`** | 传给 `rm_behavior_tree` launch 的 **`start_goal_pose` / `end_goal_pose`**，写入黑板；格式 `x;y;z; qx;qy;qz;qw`。**换图后常与 XML 里写死的 `SendGoal` 一起核对**，见 **§4.4**。 |
-| **`START_SERIAL_SENDER=1`** | 在后台启动 **`serial_sender.py --ros2`**，把 ROS 速度与控制写到 **`RADAR_PTY`**。 |
-| **`RADAR_PTY`** | **必须与当前 bridge 的 Radar 侧一致**（推荐 `/tmp/nyush-rm-sentry-radar`）。脚本内会赋给 `SERIAL_SENDER_PORT`。 |
-| **`START_BT=1`** | 启动 **`bt_comm_adapter.py`** + **`rm_behavior_tree`**。且脚本会强制把 **`SERIAL_SENDER_TOPIC` 改为 `/cmd_vel_chassis_bt`**（若原来是 `/cmd_vel_chassis`），以便合并 BT 的 `chassis_spin_vel`。 |
-| **`SERIAL_SENDER_DISABLE_STATUS_PUB`** | 传给 sender 的 **`--disable-status-pub`**：`0` = **发布** `/game_status`、`/robot_status`（来自 bridge 回传的 0x5C/0x5D）；`1` = 不发布，避免与 **热键调试** 或 **其它伪造裁判** 抢话题。 |
-| **`START_FAKE_VEL_TRANSFORM=1`** | 启动 **`fake_vel_transform`**：`/cmd_vel` → `/cmd_vel_chassis`。Nav2 与底盘坐标/云台补偿在此对齐。 |
 
-### 4.2 脚本内还会 source 的工作空间
+| Variable                               | Meaning                                                                                                                                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `**MAP_FILE**`                         | Nav2 `map_server` **map yaml** (references **pgm**). Lab map `**11_map`**; field `**RMUL2026.yaml**`. See **§4.4**.                                                                                   |
+| `**BT_STYLE`**                         | Behavior XML **without `.xml`**. `center_attack_fullstack` = full stack; `center_attack_simple` = simple (common default in `sentry_planner/start_robot.sh`).                                         |
+| `**BT_START_GOAL` / `BT_END_GOAL**`    | Passed to `rm_behavior_tree` as `**start_goal_pose` / `end_goal_pose**` on the blackboard; format `x;y;z; qx;qy;qz;qw`. After a map swap, reconcile with hard-coded `**SendGoal**` in XML (**§4.4**). |
+| `**START_SERIAL_SENDER=1`**            | Starts `**serial_sender.py --ros2**` in the background; writes ROS velocity and control to `**RADAR_PTY**`.                                                                                           |
+| `**RADAR_PTY**`                        | **Must match** the current bridge Radar side (prefer `/tmp/nyush-rm-sentry-radar`). Script maps this to `SERIAL_SENDER_PORT`.                                                                         |
+| `**START_BT=1`**                       | Starts `**bt_comm_adapter.py**` + `**rm_behavior_tree**`. Forces `**SERIAL_SENDER_TOPIC` to `/cmd_vel_chassis_bt**` (if it was `/cmd_vel_chassis`) so BT `chassis_spin_vel` merges correctly.         |
+| `**SERIAL_SENDER_DISABLE_STATUS_PUB**` | Passed to sender as `**--disable-status-pub**`: `0` = **publish** `/game_status`, `/robot_status` (from 0x5C/0x5D); `1` = do not publish (avoid fighting hotkey or other mock referee).               |
+| `**START_FAKE_VEL_TRANSFORM=1`**       | Starts `**fake_vel_transform**`: `/cmd_vel` → `/cmd_vel_chassis`. Aligns Nav2 with chassis frame / gimbal compensation.                                                                               |
 
-默认会 source **`~/nav_ws/install`**、**`sentry_planner/install`**（若存在）、**`rm_vision_ws`**、**`rm_decision_ws`**，以便 `rm_behavior_tree`、`fake_vel_transform`、`serial_sender` 依赖的消息与包可用。
 
-### 4.3 与 `sentry_planner/start_robot.sh` 的区别
+### 4.2 Workspaces sourced inside the script
 
-- **`nav_ws/start_robot.sh`**：你当前 **ICP 未接**时的主力脚本，Nav2 用 **AMCL + bringup_launch**，环境变量如上。  
-- **`sentry_planner/start_robot.sh`**：队内另一套 **Mid360 + Fast-LIO + 可选 ICP** 长脚本，变量名部分重叠但默认值不同（见该文件头部）。
+By default sources `**~/nav_ws/install**`, `**sentry_planner/install**` (if present), `**rm_vision_ws**`, `**rm_decision_ws**` so `rm_behavior_tree`, `fake_vel_transform`, and `serial_sender` message types resolve.
 
-### 4.4 地图文件两套来源；`PCD` / `PGM` / `YAML` 各在哪一步起效；换图与 BT 起终点
+### 4.3 `nav_ws/start_robot.sh` vs `sentry_planner/start_robot.sh`
 
-#### 4.4.1 你常用的两套地图（路径约定）
+- `**nav_ws/start_robot.sh**`: main script when **ICP is not** in the loop; Nav2 via **AMCL + bringup_launch**; env vars as above.
+- `**sentry_planner/start_robot.sh`**: longer **Mid360 + Fast-LIO + optional ICP** flow; overlapping names but different defaults (see file header).
 
-| 场景 | `MAP_FILE` 典型取值 | 说明 |
-|------|---------------------|------|
-| **自建图 / 实验室** | `$HOME/Desktop/map/11_map.yaml` | 建图流程（§7）里用 `map_saver_cli -f 11_map` 保存到 **`~/Desktop/map/`**，得到 **`11_map.yaml` + `11_map.pgm`** 一对文件。启动 Nav 时 **`MAP_FILE` 指向 yaml**。 |
-| **正式赛场 RMUL 2026** | `…/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml` | 与赛场地形一致的固定图；同级有 **`RMUL2026.pgm`**。场上统一把 **`MAP_FILE`** 指到该 yaml。 |
+### 4.4 Map sources; where `PCD` / `PGM` / `YAML` matter; map swap and BT goals
 
-`yaml` 里的 **`image:`** 字段写相对路径时，**pgm 与 yaml 同目录**即可；不要只拷 yaml 不拷 pgm。
+#### 4.4.1 Two common maps (path convention)
 
-#### 4.4.2 `PCD`、`PGM`、`YAML` 在链路里分别干什么
 
-| 文件类型 | 典型位置 | **谁在运行时读它** |
-|----------|----------|---------------------|
-| **PCD** | 如 `~/nav_ws/src/FAST_LIO/PCD/scans.pcd` | **仅离线建图管道**：`rotate_pcd` → **`pcd2pgm`** 的输入。**Nav2 / `map_server` 启动后不会加载 PCD**。 |
-| **PGM** | 与地图 yaml 同目录，由 yaml 的 `image:` 指向 | **`map_server` 通过 yaml 载入栅格**；全局代价地图、规划器、`SendGoal` 是否在自由空间，都基于这份 **2D 占用栅格**。 |
-| **YAML**（地图元数据） | 传给环境变量 **`MAP_FILE`** 的那个文件 | **Nav2 地图服务的唯一入口**：分辨率、原点、朝向、`free_thresh` / `occupied_thresh`、以及 **指向哪张 pgm**。换图 = **换 `MAP_FILE`**（并确保对应 pgm 存在且路径正确）。 |
+| Scenario              | Typical `MAP_FILE`                                                       | Notes                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lab / self-mapped** | `$HOME/Desktop/map/11_map.yaml`                                          | After mapping (**§7**), `map_saver_cli -f 11_map` under `**~/Desktop/map/`** yields `**11_map.yaml` + `11_map.pgm**`. Point `**MAP_FILE**` at the yaml. |
+| **RMUL 2026 field**   | `…/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml` | Fixed field layout; `**RMUL2026.pgm`** alongside. Point `**MAP_FILE**` at that yaml.                                                                    |
 
-一句话：**运行时 Nav2 只认「地图 yaml + 其引用的 pgm」**；**PCD 只参与生成这份 pgm 之前的那几步**。
 
-#### 4.4.3 行为树起点 / 终点：换图必须重标定
+If `**image:**` in yaml is relative, keep **pgm next to yaml**; do not copy yaml alone.
 
-当前使用的树里，**部分 `SendGoal` 或占位点可能在 XML 里写死世界坐标**。换 **`11_map` ↔ `RMUL2026`**（或任意新图）后，**同一组数字在栅格上可能变成障碍或根本不在场内**，必须重新测定并：
+#### 4.4.2 Roles of `PCD`, `PGM`, `YAML`
 
-- **改 `start_robot.sh` 前的环境变量**：**`BT_START_GOAL`**、**`BT_END_GOAL`**（格式 `x;y;z; qx;qy;qz;qw`），以及  
-- **核对 / 修改 XML 内硬编码坐标**（以你实际选用的 **`BT_STYLE`** 为准——黑板参数与 XML 可同时存在，**以树里节点实际引用为准**）。
 
-**坐标从哪里来：** 保存好地图 yaml 后，在有 **图形界面** 的环境（实车工控机常通过 **VNC**）运行 **`map_point_picker.py`**，在弹出的地图上点击读 **`x, y`**（相对地图原点），再填入上述参数或 XML。命令与注意见 **§7.4**。
+| Type                    | Typical path                                 | **Who reads it at runtime**                                                                                                                                |
+| ----------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PCD**                 | e.g. `~/nav_ws/src/FAST_LIO/PCD/scans.pcd`   | **Offline mapping only**: `rotate_pcd` → `**pcd2pgm`**. **Nav2 / `map_server` does not load PCD**.                                                         |
+| **PGM**                 | Same dir as map yaml, referenced by `image:` | `**map_server` loads grid via yaml**; global costmap, planner, whether `SendGoal` is in free space use this **2D occupancy grid**.                         |
+| **YAML** (map metadata) | The file you pass as `**MAP_FILE`**          | **Single entry** for Nav2 map service: resolution, origin, thresholds, **which pgm**. Swapping map = **change `MAP_FILE`** (and ensure pgm path is valid). |
+
+
+At runtime Nav2 only cares about **map yaml + referenced pgm**; **PCD** is only before that pipeline.
+
+#### 4.4.3 BT start / end goals: remeasure after map swap
+
+Some trees hard-code `**SendGoal`** world poses in XML. After `**11_map` ↔ `RMUL2026**` (or any new map), the **same numbers may land in obstacles or off-field**; remeasure and:
+
+- **Update env before `start_robot.sh`**: `**BT_START_GOAL**`, `**BT_END_GOAL**` (`x;y;z; qx;qy;qz;qw`), and
+- **Check / edit XML** for your actual `**BT_STYLE`** (blackboard and XML can coexist; **what the tree nodes use wins**).
+
+**Where coordinates come from:** after saving the map yaml, on a machine with a **GUI** (field PC often via **VNC**), run `**map_point_picker.py`**, click on the map for `**x, y**` relative to map origin, then fill env or XML. Details **§7.4**.
 
 ---
 
-## 5. 裁判数据是否进到 ROS：`/game_status`、`/robot_status`
+## 5. Whether referee data reaches ROS: `/game_status`, `/robot_status`
 
 ```bash
-source /opt/ros/humble/setup.bash   # 或 setup.zsh
+source /opt/ros/humble/setup.bash   # or setup.zsh
 source /path/to/sentry_planner/rm_decision_ws/install/setup.bash
 ros2 topic echo /game_status
 ros2 topic echo /robot_status
 ```
 
-### 5.1 数据从哪来
+### 5.1 Data path
 
-1. MCU 经 **ST** 把精简裁判字段交给 **bridge**。  
-2. Bridge 在 Radar PTY 侧发 **0x5C / 0x5D** 帧。  
-3. **`serial_sender.py --ros2`** 解析后 **发布** `GameStatus`、`RobotStatus`。
+1. MCU sends compact referee fields on **ST** to **bridge**.
+2. Bridge emits **0x5C / 0x5D** on the Radar PTY.
+3. `**serial_sender.py --ros2`** parses and **publishes** `GameStatus`, `RobotStatus`.
 
-若 **echo 有刷新且字段合理**，说明 **上位机已收到裁判链路**（至少到 sender）。若全 0 或无输出：检查 bridge、sender 是否运行、`SERIAL_SENDER_DISABLE_STATUS_PUB` 是否为 1。
+If **echo updates with sensible fields**, the **host received the referee path** (at least to sender). All zeros or nothing: check bridge, sender, and whether `SERIAL_SENDER_DISABLE_STATUS_PUB` is 1.
 
 ---
 
-## 6. 无真实裁判时调试 BT：`watch` + `hotkey`
+## 6. Debugging BT without real referee: `watch` + hotkey
 
-### 6.1 `watch_center_attack_state.py`（只读观察）
+### 6.1 `watch_center_attack_state.py` (read-only)
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -318,11 +338,11 @@ source /path/to/sentry_planner/rm_decision_ws/install/setup.bash
 python3 /path/to/sentry_planner/scripts/watch_center_attack_state.py
 ```
 
-- **角色**：**订阅** `/amcl_pose`、`/game_status`、`/robot_status`、`/robot_control`、`/cmd_vel_chassis_bt`，定时打印一行状态。  
-- **对应关系**：**BT + Nav（位姿）+ 通讯输出** 的「监视器」，**不发布**话题。  
-- 适合与下面热键脚本同开：一个改状态，一个看结果。
+- **Role**: **subscribes** `/amcl_pose`, `/game_status`, `/robot_status`, `/robot_control`, `/cmd_vel_chassis_bt`; prints one status line on a timer.
+- **Use**: monitor **BT + Nav pose + comms output**; **does not publish**.
+- Run alongside hotkey script: one changes state, one watches.
 
-### 6.2 `bt_hotkey_debug.py`（伪造裁判输入）
+### 6.2 `bt_hotkey_debug.py` (mock referee)
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -330,159 +350,169 @@ source /path/to/sentry_planner/rm_decision_ws/install/setup.bash
 python3 /path/to/sentry_planner/scripts/bt_hotkey_debug.py
 ```
 
-- **角色**：**持续发布** `/game_status`、`/robot_status`（及某些预设下的 `/detector/armors`），用键盘切换「未开赛 / 比赛中 / 低血 / 高热 / attacked」等。  
-- **对应关系**：**行为树调试**；会 **覆盖** 真实裁判（若同时开着 `serial_sender` 发状态，二者会抢同一话题——调试时通常 **`SERIAL_SENDER_DISABLE_STATUS_PUB=1`** 关 sender 的状态发布）。  
-- 按键与预设名见脚本内 `PRESETS`（含 `0/1/2/…` 等）。
+- **Role**: **continuously publishes** `/game_status`, `/robot_status` (and sometimes `/detector/armors`); keyboard presets for pre-match / in-match / low HP / high heat / attacked.
+- **Use**: **BT debug**; **overwrites** real referee if `serial_sender` also publishes—usually set `**SERIAL_SENDER_DISABLE_STATUS_PUB=1`**.
+- Keys and preset names: see `PRESETS` in the script.
 
 ---
 
-## 7. Fast-LIO 建图后：旋转 PCD → 2D PGM → 保存地图（Nav2）
+## 7. After Fast-LIO mapping: rotate PCD → 2D PGM → save Nav2 map
 
-流程对应你三条命令：
+Matches your usual three-command flow.
 
-### 7.1 旋转点云
+### 7.1 Rotate point cloud
 
 ```bash
 cd ~/nav_ws/src/FAST_LIO/PCD
 python3 rotate_pcd.py
 ```
 
-- **作用**：对建图得到的 **`scans.pcd`（或脚本配置的路径）** 做姿态修正，使地面与地图轴向和 Nav2 期望一致。  
-- **注意**：`pcd2pgm` 的 launch 里若写死了输入 PCD 路径，需与旋转输出路径一致。
+- **Purpose**: correct pose of `**scans.pcd`** (or path in script) so ground and map axes match Nav2.
+- **Note**: if `pcd2pgm` launch hard-codes PCD path, keep it aligned with rotate output.
 
-### 7.2 PCD 转 2D 栅格（pgm）
+### 7.2 PCD to 2D grid (pgm)
 
 ```bash
 export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
 cd ~/nav_ws
-source install/setup.zsh   # 或 setup.bash
+source install/setup.zsh   # or setup.bash
 ros2 launch pcd2pgm pcd2pgm_launch.py
 ```
 
-- **作用**：把 **3D 点云** 投影成 **2D 占用栅格**，供 `map_server` 使用。  
-- **`LD_PRELOAD`**：缓解部分环境下 PCL/Open3D 与 **libusb** 的兼容问题（与是否插雷达无关时常保留也无妨）。
+- **Purpose**: project **3D cloud** to **2D occupancy** for `map_server`.
+- `**LD_PRELOAD`**: mitigates some PCL/Open3D vs **libusb** issues (harmless to keep even without LiDAR plugged).
 
-### 7.3 保存 Nav2 地图
+### 7.3 Save Nav2 map
 
 ```bash
 cd ~/Desktop/map
 ros2 run nav2_map_server map_saver_cli -f 11_map
 ```
 
-- **作用**：把当前 **`/map`** 保存为 **`11_map.yaml` + `11_map.pgm`**（前缀 `-f`）。  
-- 之后在 **`MAP_FILE`** 里指向该 yaml 即可被 `start_robot.sh` 使用。  
-- **PCD / PGM / YAML 分工、赛场 `RMUL2026`、换图时要改 BT 起终点**：见 **§4.4**。
+- **Purpose**: save current `**/map`** as `**11_map.yaml` + `11_map.pgm**` (`-f` prefix).
+- Point `**MAP_FILE**` at that yaml for `start_robot.sh`.
+- **PCD/PGM/YAML roles, field `RMUL2026`, retune BT goals on map change**: **§4.4**.
 
-### 7.4 用 `map_point_picker.py` 在图上点选坐标（需 GUI / VNC）
+### 7.4 Pick coordinates with `map_point_picker.py` (needs GUI / VNC)
 
-在 **`map_saver_cli` 保存完** `11_map.yaml`（或任意已就绪的地图 yaml）之后，**需要显示器或 VNC**（脚本会打开图像窗口）：
+After `**map_saver_cli`** produced `11_map.yaml` (or any ready yaml), you need a **display or VNC** (opens an image window):
 
 ```bash
 python3 ~/nav_ws/map_point_picker.py ~/Desktop/map/11_map.yaml
 ```
 
-- **作用**：打开对应栅格图，**在 figure 上点击**即可得到该点相对**地图原点**的坐标（用于填写 **`BT_START_GOAL` / `BT_END_GOAL`** 中的 **`x;y`**，或修改 XML 里写死的 `SendGoal`）。  
-- **赛场图**可把路径换成 **`…/rm_nav_bringup/map/RMUL2026.yaml`**，在同一套坐标系下标定。  
-- 若 SSH 无转发图形，请在 **本机桌面或 VNC 会话**里执行。
+- **Purpose**: click on the occupancy image for **map-frame `x, y`** (fill `**BT_START_GOAL` / `BT_END_GOAL**` `x;y` parts or XML `SendGoal`).
+- For **field map**, use path `**…/rm_nav_bringup/map/RMUL2026.yaml`**.
+- If SSH has no X11, run on **local desktop or VNC session**.
 
 ---
 
-## 8. 开机自启：`autostart_fullstack.sh`
+## 8. Boot autostart: `autostart_fullstack.sh`
 
 ```bash
 bash /home/nyu/sentry_planner/scripts/autostart_fullstack.sh
 ```
 
-### 8.1 做什么
+### 8.1 What it does
 
-1. 清理旧进程与 PTY 软链（可选）。  
-2. **`systemctl --user restart sentry_bridge.service`**（bridge 在 systemd 里，**仍应用自动选口或你在 service 里写的参数**）。  
-3. 等待 **`/tmp/nyush-rm-sentry-vision`** 出现。  
-4. 启动 **`just test detect --web --send`**（有图形用 xterm，无则 nohup 写日志）。  
-5. 清理 Nav/LIO 残留后，在 **`~/nav_ws`** 用一组固定环境变量跑 **`./start_robot.sh`**（含 `MAP_FILE`、`BT_STYLE=center_attack_fullstack`、`RADAR_PTY=/tmp/nyush-rm-sentry-radar` 等，与脚本内硬编码一致）。
+1. Optional cleanup of old processes and PTY symlinks.
+2. `**systemctl --user restart sentry_bridge.service**` (bridge under systemd; still uses auto port or service args).
+3. Wait until `**/tmp/nyush-rm-sentry-vision**` exists.
+4. Start `**just test detect --web --send**` (xterm if graphical, else nohup + logs).
+5. After clearing Nav/LIO leftovers, run `**~/nav_ws/./start_robot.sh**` with fixed env (`MAP_FILE`, `BT_STYLE=center_attack_fullstack`, `RADAR_PTY=/tmp/nyush-rm-sentry-radar`, etc.—matches script defaults).
 
-### 8.2 日志
+### 8.2 Logs
 
-- `/home/nyu/sentry_planner/logs/autostart/` 下 **`vision_detect.log`**、**`nav_bt.log`** 等。
+- Under `/home/nyu/sentry_planner/logs/autostart/`: `**vision_detect.log**`, `**nav_bt.log**`, etc.
 
-### 8.3 场上用途
+### 8.3 Field use
 
-无笔记本时 **一条命令拉起 bridge（经 systemd）+ 视觉 + Nav + BT + sender**，与手动多终端等价。
-
----
-
-## 9. 脚本与节点功能对照表
-
-| 组件 | 路径或命令 | 通讯 | 导航 | 视觉 | BT |
-|------|------------|------|------|------|-----|
-| `sentry_bridge.py` | `just sentry-bridge` | **核心**：占 MCU 口，拆 Vision/Radar PTY | — | PTY | — |
-| `serial_sender.py --ros2` | nyush-rm-vision | Radar PTY ↔ ROS 话题 | 消费 `/cmd_vel_chassis_bt` 等 | — | 消费 `/robot_control` |
-| `bt_comm_adapter.py` | sentry_planner/scripts | 产出 `/cmd_vel_chassis_bt` | 衔接 `/cmd_vel_chassis` | 可选 armors 适配 | 衔接 `/robot_control` |
-| `rm_behavior_tree` | rm_decision_ws | — | `SendGoal` | 可选订阅 armors | **决策核心** |
-| `fake_vel_transform` | nav_ws 包 | — | `/cmd_vel`→`/cmd_vel_chassis` | — | — |
-| `watch_center_attack_state.py` | scripts | 监视 `cmd_vel_chassis_bt`、`robot_control` | amcl 位姿 | — | 监视裁判类输入 |
-| `bt_hotkey_debug.py` | scripts | — | — | — | **伪造** `game`/`robot` 状态 |
-| `autostart_fullstack.sh` | scripts | 间接启动 bridge 服务 + sender | 启动 `nav_ws/start_robot.sh` | 启动 detect | 启动 BT |
+Without a laptop, **one command** brings up bridge (via systemd) + vision + Nav + BT + sender, equivalent to several manual terminals.
 
 ---
 
-## 10. 速查：最小手动终端组合
+## 9. Script and node cheat sheet
 
-| 终端 | 内容 |
-|------|------|
-| 1 | `just sentry-bridge`（自动选口） |
-| 2（可选） | `just test detect --web --send`（Vision PTY） |
-| 3 | `RADAR_PTY=/tmp/nyush-rm-sentry-radar … ./start_robot.sh`（nav_ws 或 sentry_planner，按你现场脚本） |
+
+| Component                      | Path or command        | Comms                                             | Nav                                  | Vision                | BT                             |
+| ------------------------------ | ---------------------- | ------------------------------------------------- | ------------------------------------ | --------------------- | ------------------------------ |
+| `sentry_bridge.py`             | `just sentry-bridge`   | **Core**: holds MCU port, splits Vision/Radar PTY | —                                    | PTY                   | —                              |
+| `serial_sender.py --ros2`      | nyush-rm-vision        | Radar PTY ↔ ROS                                   | consumes `/cmd_vel_chassis_bt`, etc. | —                     | consumes `/robot_control`      |
+| `bt_comm_adapter.py`           | sentry_planner/scripts | emits `/cmd_vel_chassis_bt`                       | bridges `/cmd_vel_chassis`           | optional armors adapt | bridges `/robot_control`       |
+| `rm_behavior_tree`             | rm_decision_ws         | —                                                 | `SendGoal`                           | optional armors sub   | **decision**                   |
+| `fake_vel_transform`           | nav_ws pkg             | —                                                 | `/cmd_vel`→`/cmd_vel_chassis`        | —                     | —                              |
+| `watch_center_attack_state.py` | scripts                | watches `cmd_vel_chassis_bt`, `robot_control`     | AMCL pose                            | —                     | watches referee inputs         |
+| `bt_hotkey_debug.py`           | scripts                | —                                                 | —                                    | —                     | **mocks** `game`/`robot` state |
+| `autostart_fullstack.sh`       | scripts                | starts bridge svc + sender indirectly             | runs `nav_ws/start_robot.sh`         | starts detect         | starts BT                      |
+
 
 ---
 
-## 11. `communication command.txt` 里易混点
+## 10. Minimal manual terminal set
 
-- **Radar mock**：`just radar --port /tmp/nyush-rm-sentry-radar` 测的是 **PTY**，不是强制 ACM0。  
-- **串口权限**：`nav_ws/start_robot.sh` 里仍有对 **`/dev/ttyACM0`** 的 `chmod`；若自动选口选到 **ACM1**，需自行 `chmod` 或 udev 规则，与 bridge **选口策略**是两件事。
+
+| Terminal     | Content                                                                                             |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| 1            | `just sentry-bridge` (auto port)                                                                    |
+| 2 (optional) | `just test detect --web --send` (Vision PTY)                                                        |
+| 3            | `RADAR_PTY=/tmp/nyush-rm-sentry-radar … ./start_robot.sh` (nav_ws or sentry_planner per your setup) |
+
 
 ---
 
-## 12. 实机联调
+## 11. Easy mistakes in `communication command.txt`
 
-### 12.1 分阶段策略（结论）
+- **Radar mock**: `just radar --port /tmp/nyush-rm-sentry-radar` tests the **PTY**, not “must be ACM0”.
+- **Serial permissions**: `nav_ws/start_robot.sh` may still `chmod` `**/dev/ttyACM0`**; if auto-pick lands on **ACM1**, add `chmod` or udev—that is separate from bridge **selection policy**.
 
-不必一开始就占完整比赛场：
+---
 
-| 阶段 | 目标 | 是否强依赖「与地图一致的场地」 |
-|------|------|----------------------------------|
-| **A — 台架** | bridge、PTY、`serial_sender`、底盘速度响应、BT 分支、`/robot_control` 与 `/cmd_vel_chassis_bt` 是否有输出 | **否** |
-| **B — 小范围低速地面** | 定位稳定、短距离移动、`Home` 类点是否在自由空间 | **是**（环境需与所用地图大体一致） |
-| **C — 真实场地** | 去中心、守中、低血回家；评价 Nav2 参数与战术 | **是**（赛场图如 **`RMUL2026`**） |
 
-没有匹配环境时，可以调通讯与 BT 逻辑，**不要轻易下结论「实机导航已完全 OK」**。定位链、代价地图与 `navigate_to_pose` 前提见 [README_LIDAR.md](README_LIDAR.md) **§10.8**。
 
-### 12.2 上实机前安全（最低限度）
+## 12. Hardware bring-up
 
-- 枪口安全，必要时先断发射；首轮联调关闭不必要的自动开火。  
-- 底盘首次测试先架空或**限速**，场边有人监护，急停手段明确。  
+### 12.1 Phased strategy
 
-### 12.3 `start_robot.sh` 与 bridge、sender
+You do not need the full field on day one:
 
-- **`start_robot.sh`（`nav_ws` 或 `sentry_planner`）默认不会启动 `sentry_bridge`**；bridge 仍建议**单独终端**或 systemd。  
-- 要把 **`/cmd_vel_chassis_bt`** 与 **`/robot_control`** 写进下位机链路，需 **`START_SERIAL_SENDER=1 RADAR_PTY=<Radar PTY>`**（与 **§4** 一致）。  
-- 当前实机主线里，**`/cmd_vel_chassis_bt`** 由 Nav2 底盘速度与 **`RobotControl.chassis_spin_vel`** 经 **`bt_comm_adapter`** 合成，再经 **sender → Radar PTY → MCU**；**`/robot_control`** 的 **`scan_*`、`allow_vision_control`** 等经 **A3 → MCU** 已可落到云台状态机（协议细节见 [README_COMMUNICATION.md](README_COMMUNICATION.md)）。
 
-### 12.4 推荐终端分工（手动多终端）
+| Phase                         | Goal                                                                                                            | Needs environment matching map?         |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **A — Bench**                 | bridge, PTY, `serial_sender`, chassis responds, BT branches, `/robot_control` and `/cmd_vel_chassis_bt` present | **No**                                  |
+| **B — Small area, low speed** | stable localization, short moves, `Home`-like poses in free space                                               | **Yes** (roughly matches map)           |
+| **C — Full field**            | center approach/hold, low-HP home; tune Nav2 and tactics                                                        | **Yes** (field map like `**RMUL2026`**) |
 
-路径按你本机仓库位置改写。
 
-| 终端 | 内容 |
-|------|------|
-| **1 — 导航/定位** | 例：`ros2 launch rm_nav_bringup bringup_real.launch.py world:=<地图前缀> mode:=nav …`（`world` 与 **`MAP_FILE`/地图包**一致；定位方式按你现场 `lio` / `localization` 参数） |
-| **2 — bridge** | `cd nyush-rm-control && just sentry-bridge`（或 `--port /dev/ttyACM0`）；记下 **Vision / Radar PTY**，优先用 **`/tmp/nyush-rm-sentry-radar`** 等软链 |
-| **3 — sender** | `source /opt/ros/humble/setup.bash` 后 `python3 …/nyush-rm-vision/serial_sender.py --port <Radar PTY> --ros2 --topic /cmd_vel_chassis_bt`；若已用 **§4** 的 **`START_SERIAL_SENDER=1`** 则可不单独开 |
-| **4 — BT 调试** | `bash sentry_planner/scripts/run_center_attack_debug_session.sh`（保活 **`bt_comm_adapter`**、**`rm_behavior_tree`**、**`watch_center_attack_state.py`**）；**须先**有 Nav2 且 **`navigate_to_pose` action 在线** |
-| **5 — 视觉（可选）** | `nyush-rm-vision` 启动 sentry；**`configs/sentry.yaml` 的 `com_port` 必须指向当前 Vision PTY** |
+Without a matching arena you can still tune comms and BT—**do not claim “full hardware Nav2 is verified”** yet. Localization chain, costmap, and `navigate_to_pose` prerequisites: [README_LIDAR.md](README_LIDAR.md) **§10.8**.
 
-### 12.5 最小检查清单
+### 12.2 Safety before first motion
 
-上电后、起 BT 前：
+- Safe muzzle; disable auto fire if not needed for the test.
+- First chassis tests: jack up or **limit speed**, spotter present, estop known.
+
+### 12.3 `start_robot.sh`, bridge, sender
+
+- `**start_robot.sh` (nav_ws or sentry_planner) does not start `sentry_bridge`** by default; run bridge in **its own terminal** or systemd.
+- To push `**/cmd_vel_chassis_bt`** and `**/robot_control**` to MCU: `**START_SERIAL_SENDER=1 RADAR_PTY=<Radar PTY>**` (same as **§4**).
+- On the current field stack, `**/cmd_vel_chassis_bt`** = Nav2 chassis velocity + `**RobotControl.chassis_spin_vel**` via `**bt_comm_adapter**`, then **sender → Radar PTY → MCU**; `**scan_*`, `allow_vision_control`** on `**/robot_control**` go **A3 → MCU** (wire details [README_COMMUNICATION.md](README_COMMUNICATION.md)).
+
+### 12.4 Suggested manual terminals
+
+Rewrite paths for your machine.
+
+
+| Terminal                   | Content                                                                                                                                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1 — Nav / localization** | e.g. `ros2 launch rm_nav_bringup bringup_real.launch.py world:=<map_prefix> mode:=nav …` (`world` matches `**MAP_FILE`** / map package; `lio` / `localization` per site)                                               |
+| **2 — bridge**             | `cd nyush-rm-control && just sentry-bridge` (or `--port /dev/ttyACM0`); note **Vision / Radar PTY**, prefer `**/tmp/nyush-rm-sentry-radar`**                                                                           |
+| **3 — sender**             | after `source /opt/ros/humble/setup.bash`, `python3 …/nyush-rm-vision/serial_sender.py --port <Radar PTY> --ros2 --topic /cmd_vel_chassis_bt`; skip if **§4** `**START_SERIAL_SENDER=1`** already starts it            |
+| **4 — BT debug**           | `bash sentry_planner/scripts/run_center_attack_debug_session.sh` (keeps `**bt_comm_adapter`**, `**rm_behavior_tree**`, `**watch_center_attack_state.py**`); **requires** Nav2 and `**navigate_to_pose` action server** |
+| **5 — Vision (optional)**  | start `nyush-rm-vision` sentry; `**configs/sentry.yaml` `com_port`** must be current **Vision PTY**                                                                                                                    |
+
+
+### 12.5 Minimal checklist
+
+After power, before relying on BT:
 
 ```bash
 ros2 action list | grep navigate_to_pose
@@ -490,13 +520,13 @@ ros2 topic echo /robot_control --once
 ros2 topic echo /cmd_vel_chassis_bt --once
 ```
 
-若 **`navigate_to_pose`** 不在线，先不要指望 **`SendGoal`** 能闭环。
+If `**navigate_to_pose**` is missing, `**SendGoal**` will not close the loop.
 
-### 12.6 伪造裁判话题（调 BT 分支）
+### 12.6 Mock referee topics (BT branch debug)
 
-（需已 `source rm_decision_ws/install/setup.bash`。）
+(Requires `source rm_decision_ws/install/setup.bash`.)
 
-**比赛中 + 正常血量 → 期望 watcher 侧接近 `APPROACH_CENTER`，`/cmd_vel_chassis_bt` 有输出：**
+**In match + healthy HP → expect watcher near `APPROACH_CENTER`, `/cmd_vel_chassis_bt` active:**
 
 ```bash
 ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
@@ -505,44 +535,48 @@ ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
   "{robot_id: 7, current_hp: 600, shooter_heat: 0, team_color: false, is_attacked: false}"
 ```
 
-**低血 → 期望 `HOME_RECOVER`、回 `Home`：**
+**Low HP → expect `HOME_RECOVER`, return `Home`:**
 
 ```bash
 ros2 topic pub -r 10 /robot_status rm_decision_interfaces/msg/RobotStatus \
   "{robot_id: 7, current_hp: 200, shooter_heat: 0, team_color: false, is_attacked: false}"
 ```
 
-**未开赛 → 期望 `HOME_STANDBY`、不主动冲中心：**
+**Pre-match → expect `HOME_STANDBY`, no rush to center:**
 
 ```bash
 ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
   "{game_progress: 0, stage_remain_time: 220}"
 ```
 
-若同时开着 **`serial_sender` 发布真实裁判**，会与上述 **抢同一话题**；调试时可 **`SERIAL_SENDER_DISABLE_STATUS_PUB=1`**（见 **§5**）。
+If `**serial_sender**` still publishes real referee, these **fight the same topics**; use `**SERIAL_SENDER_DISABLE_STATUS_PUB=1`** (**§5**).
 
-### 12.7 何时算「可以去完整场地」
+### 12.7 When you are ready for the full field
 
-至少：**bridge / sender 稳定**、**实机定位稳定**、**`navigate_to_pose` 正常**、**`APPROACH_CENTER` / `HOME_RECOVER` / `HOME_STANDBY` 分支能切对**、**`Home` / 中心点在所用地图上处于自由空间**（换图与坐标测定见 **§4.4**、**§7.4**）。
+At minimum: **stable bridge/sender**, **stable localization**, `**navigate_to_pose` OK**, `**APPROACH_CENTER` / `HOME_RECOVER` / `HOME_STANDBY` switch correctly**, `**Home` / center poses are free space** on the loaded map (remap: **§4.4**, **§7.4**).
 
-### 12.8 已知易错点
+### 12.8 Common pitfalls
 
-- **PTY 每次 bridge 重启可能变**：勿把旧的 **`/dev/pts/N`** 写死忘改；见 [README_COMMUNICATION.md](README_COMMUNICATION.md) **§15.2**。  
-- **`watch_center_attack_state.py` 默认 `--home-x/y`、`--center-x/y` 可能与 XML 中 `SendGoal` 坐标不一致**，实机请看 [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) **§5.1**，用命令行参数与树内点对齐。
-
----
-
-## 13. 四专题分工速查（我该打开哪份 README？）
-
-| 你的问题 | 优先打开的文档 |
-|----------|----------------|
-| 串口谁占、PTY 是啥、19 字节 / A3 / SP、话题从哪来 | [README_COMMUNICATION.md](README_COMMUNICATION.md) |
-| 行为树跑哪棵 XML、`SendGoal`/`RobotControl`、Groot2、热键 | [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) |
-| **Gazebo RMUL2026、Sim2Real、Groot AppImage 与 `bringup_sim`** | [README_LIDAR.md §6.4](README_LIDAR.md#nyush-gazebo-sim2real) + [mid360 command.txt](mid360%20command.txt) |
-| Mid360、FAST-LIO、Nav2 参数、点云、代价地图、TF | [README_LIDAR.md](README_LIDAR.md) |
-| 一键命令、`MAP_FILE`、建图、`start_robot` 变量、实机终端顺序 | **本文**（§1、§4、§7、§12） |
-| 仍不确定 | [README.md](README.md) 中央索引 |
+- **PTY numbers change** after each bridge restart; do not keep stale `**/dev/pts/N`**; see [README_COMMUNICATION.md](README_COMMUNICATION.md) **§15.2**.
+- `**watch_center_attack_state.py` defaults for `--home-x/y`, `--center-x/y` may not match XML `SendGoal`**; align args with the tree ([README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) **§5.1**).
 
 ---
 
-如需把某条命令嵌进 systemd 或改 `autostart_fullstack.sh` 内 `MAP_FILE` / BT 目标点，直接改脚本内对应环境变量块即可。
+
+
+## 13. Which README should I open?
+
+
+| Question                                                                            | Open first                                                                                                 |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Who owns serial, what is PTY, 19-byte / A3 / SP, where topics come from             | [README_COMMUNICATION.md](README_COMMUNICATION.md)                                                         |
+| Which XML runs, `SendGoal`/`RobotControl`, Groot2, hotkeys                          | [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md)                                               |
+| **Gazebo RMUL2026, Sim2Real, Groot AppImage, `bringup_sim`**                        | [README_LIDAR.md §6.4](README_LIDAR.md#nyush-gazebo-sim2real) + [mid360 command.txt](mid360%20command.txt) |
+| Mid360, FAST-LIO, Nav2 tuning, clouds, costmap, TF                                  | [README_LIDAR.md](README_LIDAR.md)                                                                         |
+| One-liner commands, `MAP_FILE`, mapping, `start_robot` env, hardware terminal order | **This file** (§1, §4, §7, §12)                                                                            |
+| Still unsure                                                                        | [README.md](README.md) central index                                                                       |
+
+
+---
+
+To embed a command in systemd or change `MAP_FILE` / BT goals inside `autostart_fullstack.sh`, edit the env block in that script directly.

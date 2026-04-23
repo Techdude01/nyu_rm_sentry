@@ -18,10 +18,10 @@ BT::NodeStatus IsDetectEnemyAction::detectEnemyStatus()
   }
 
   if (msg->armors.empty()) {
-    // std::cout << "未检测到敌人" << '\n';
+    // std::cout << "No enemy detected" << '\n';
     return BT::NodeStatus::FAILURE;
   } else {
-    // std::cout << "检测到敌人" << '\n';
+    // std::cout << "Enemy detected" << '\n';
     return BT::NodeStatus::SUCCESS;
   }
 }

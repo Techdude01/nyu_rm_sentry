@@ -1,15 +1,15 @@
 /**
   ****************************(C) COPYRIGHT 2023 Polarbear*************************
   * @file       rm_serial_driver.hpp/cpp
-  * @brief      串口通信模块
-  * @note       感谢@ChenJun创建本模块并开源，
-  *             现内容为北极熊基于开源模块进行修改并适配自己的车车后的结果。
+  * @brief      Serial communication node
+  * @note       Original module by @ChenJun (open source).
+  *             This fork: Polarbear adaptations for the team robot.
   * @history
   *  Version    Date            Author          Modification
   *  V1.0.0     2022            ChenJun         1. done
-  *  V1.0.1     2023-12-11      Penguin         1. 添加与rm_rune_dector_node模块连接的Client
-  *  V1.0.2     2024-3-1        LihanChen       1. 添加导航数据包，并重命名packet和相关函数
-  *  V1.0.3     2024-3-4        LihanChen       1. 添加裁判系统数据包
+  *  V1.0.1     2023-12-11      Penguin         1. Add client to rm_rune_detector_node
+  *  V1.0.2     2024-3-1        LihanChen       1. Add navigation packet; rename packets and helpers
+  *  V1.0.3     2024-3-4        LihanChen       1. Add referee-system packets
   @verbatim
   =================================================================================
 

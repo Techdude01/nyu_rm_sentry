@@ -1,7 +1,7 @@
 /**
   ****************************(C) COPYRIGHT 2023 Polarbear*************************
   * @file       rune.hpp
-  * @brief      用于能量机关的相关描述
+  * @brief      Energy rune (game element) data structures
   * @note
   * @history
   *  Version    Date            Author          Modification
@@ -24,73 +24,73 @@
 #include <string>
 
 /**
- * @brief 包含了与符文检测相关的结构体和枚举类型的命名空间
+ * @brief Namespace for rune-detection structs and enums
  */
 namespace rm_rune_detector
 {
 
     /**
-     * @brief 靶标状态的类型枚举类
+     * @brief Target activation state
      */
     enum class TargetType
     {
-        DISACTIVED, /* 未激活的目标 */
-        ACTIVED,    /* 激活的目标 */
-        INVALID     /* 无效的目标 */
+        DISACTIVED, /* Inactive target */
+        ACTIVED,    /* Active target */
+        INVALID     /* Invalid target */
     };
 
-    const int RED = 0;  /* 红色 */
-    const int BLUE = 1; /* 蓝色 */
+    const int RED = 0;  /* Red alliance */
+    const int BLUE = 1; /* Blue alliance */
 
-    const std::string ARMOR_TYPE_STR[3] = {"disactived", "actived", "invalid"}; /* 靶标类型的字符串表示 */
+    const std::string ARMOR_TYPE_STR[3] = {"disactived", "actived", "invalid"}; /* String labels for TargetType */
 
     /**
-     * @brief 符文检测中的椭圆结构体，继承自cv::RotatedRect
+     * @brief Ellipse for rune detection; extends cv::RotatedRect
      */
     struct Ellipse : public cv::RotatedRect
     {
         /**
-         * @brief 默认构造函数
+         * @brief Default constructor
          */
         Ellipse() = default;
 
         /**
-         * @brief 构造函数，根据给定的旋转矩形构造椭圆
-         * @param box 给定的旋转矩形
+         * @brief Build ellipse from a rotated rectangle
+         * @param box Source rotated rect
          */
         explicit Ellipse(cv::RotatedRect box) : cv::RotatedRect(box)
         {
-            // 获取椭圆的主轴和副轴的长度
+            // Major and minor axis lengths
             major_axis = std::max(box.size.width, box.size.height);
             minor_axis = std::min(box.size.width, box.size.height);
         }
 
-        float major_axis; /* 椭圆的主轴长度 */
-        float minor_axis; /* 椭圆的副轴长度 */
-        int color;        /* 椭圆的颜色 */
+        float major_axis; /* Major axis length */
+        float minor_axis; /* Minor axis length */
+        int color;        /* Bar / ellipse color id */
     };
 
     /**
-     * @brief 能量机关检测中的靶标结构体
+     * @brief Rune target (one strike plate)
      */
     struct Target
     {
         /**
-         * @brief 默认构造函数
+         * @brief Default constructor
          */
         Target() = default;
 
         /**
-         * @brief 构造函数，根据给定的椭圆构造目标
-         * @param ellipse 给定的椭圆
+         * @brief Construct from an ellipse
+         * @param ellipse Fitted ellipse
          */
         Target(Ellipse &ellipse)
         {
             target_ellipse = ellipse;
         }
 
-        Ellipse target_ellipse; /* 目标的椭圆 */
-        TargetType type;        /* 目标的类型 */
+        Ellipse target_ellipse; /* Fitted ellipse */
+        TargetType type;        /* Activation state */
     };
 } // namespace rm_rune_detector
 

@@ -1,124 +1,124 @@
-LoGoPlanner RGB-D 低延迟双机通信 commands
-最后更新：2026-03-19
+LoGoPlanner RGB-D low-latency two-machine commands
+Last updated: 2026-03-19
 
-场景说明
+Scenario
 --------
-1. 这份命令是给“RGB-D 采集端机器 -> GPU 推理端机器”双机通信用的。
-2. 当前主链路是 HTTP fast：
+1. These commands are for RGB-D capture machine -> GPU inference machine.
+2. Primary path is HTTP fast:
    - POST /navigator_reset
    - POST /pointgoal_step_fast
-3. 当前目标是把 RGB-D 采集机上的 ROS 话题压缩后发到另一台电脑，不是走 sentry_planner 的视觉串口链。
-4. 所以这一套命令默认不需要：
+3. Goal: compress ROS topics on the capture PC and send to the other machine; this is not the sentry_planner vision serial path.
+4. By default you do not need:
    - ./start_robot.sh
    - ros2 launch rm_vision_bringup vision_bringup.launch.py
    - rm_serial_driver
-5. 后续如果服务端换成 ZMQ bridge，再切到 zmq 模式。
+5. If the server switches to a ZMQ bridge later, switch client to zmq mode.
 
 
-0. 默认约定
-===========
+0. Defaults
+=============
 
-GPU 推理端
-----------
+GPU inference side
+------------------
 SERVER_URL=http://10.224.36.118:19999
 
-采集端默认 ROS 话题
--------------------
-RGB            : /usb_cam_color/image_raw
-Depth          : /camera/depth/image_raw
-RGB camera_info: /usb_cam_color/camera_info
-Depth info     : /camera/depth/camera_info
+Default ROS topics on capture machine
+-------------------------------------
+RGB             : /usb_cam_color/image_raw
+Depth           : /camera/depth/image_raw
+RGB camera_info : /usb_cam_color/camera_info
+Depth info      : /camera/depth/camera_info
 
-默认发送参数
-------------
-transport      : http_fast
-rgb/depth size : 320x240
-jpeg_quality   : 60
-send_fps       : 5
-queue size     : 1
-policy         : latest-frame-only
+Default send parameters
+-----------------------
+transport       : http_fast
+rgb/depth size  : 320x240
+jpeg_quality    : 60
+send_fps        : 5
+queue size      : 1
+policy          : latest-frame-only
 
 source /opt/ros/humble/setup.zsh
 source /home/nyu/sentry_planner/rm_vision_ws/install/setup.zsh
 ros2 launch hik_camera hik_camera.launch.py
 
-1. 采集机首次安装
-=================
+1. First-time setup on capture machine
+======================================
 
-1.1 进入项目
-------------
+1.1 Enter project
+-----------------
 cd /home/nyu/sentry_planner/logo_low_latency_client
 
-1.2 建虚拟环境
---------------
+1.2 Create venv
+---------------
 python3 -m venv .venv
 
-1.3 安装依赖
-------------
+1.3 Install dependencies
+--------------------------
 source /opt/ros/humble/setup.zsh
 source .venv/bin/activate
 pip install -r requirements.txt
 
 
-2. 采集机先确认 ROS 话题
-========================
+2. Verify ROS topics on capture machine
+=======================================
 
-2.1 列出相关话题
-----------------
+2.1 List relevant topics
+------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic list | grep -E 'usb_cam_color|camera/depth|image_raw|camera_info'
 
-2.2 看 RGB 是否在发
---------------------
+2.2 Check RGB is publishing
+---------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic hz /usb_cam_color/image_raw
 
-2.3 看 Depth 是否在发
-----------------------
+2.3 Check depth is publishing
+-----------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic hz /camera/depth/image_raw
 
-2.4 读一次 RGB 内参
--------------------
+2.4 One-shot RGB intrinsics
+---------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic echo /usb_cam_color/camera_info --once
 
-2.5 读一次 Depth 内参
----------------------
+2.5 One-shot depth intrinsics
+-----------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic echo /camera/depth/camera_info --once
 
-如果你的真实话题名不是上面这四个
-------------------------------
-把下面运行命令里的这四项替换掉：
+If your real topic names differ
+---------------------------------
+Replace these four in the run command:
 --rgb-topic
 --depth-topic
 --rgb-info-topic
 --depth-info-topic
 
 
-3. 先确认两台电脑网络是通的
-============================
+3. Check network between the two machines
+=========================================
 
-3.1 从采集机 ping GPU 机
-------------------------
+3.1 Ping GPU host from capture machine
+--------------------------------------
 ping 10.224.36.118
 
-3.2 从采集机测 reset 接口
--------------------------
+3.2 Test reset endpoint from capture machine
+--------------------------------------------
 curl -v \
   -H 'Content-Type: application/json' \
   -d '{"intrinsic":[[1,0,0],[0,1,0],[0,0,1]],"stop_threshold":[-1.0],"batch_size":1}' \
   http://10.224.36.118:19999/navigator_reset
 
-说明
-----
-1. 上面这条 curl 只是测 HTTP 联通和接口是否活着。
-2. 真正运行时，客户端会用缩放后的真实 intrinsic 再发一次 reset。
+Notes
+-----
+1. This curl only checks HTTP reachability and that the API responds.
+2. The real client sends reset again with scaled real intrinsics.
 
-3.3 如果你现在只想测传输链路延迟
---------------------------------
-这时候先不要卡在 ROS / depth 相机上，直接跑 synthetic benchmark：
+3.3 Transport latency only (skip ROS / depth for now)
+------------------------------------------------------
+Run the synthetic benchmark:
 
 cd /home/nyu/sentry_planner/logo_low_latency_client
 source .venv/bin/activate
@@ -130,15 +130,15 @@ python3 -m client.benchmark_transport \
   --send-fps 5 \
   --show-stats
 
-这条命令会：
-1. 本地生成 320x240 RGB JPEG
-2. 本地生成 320x240 depth PNG
-3. 调 /navigator_reset
-4. 连续调 /pointgoal_step_fast
-5. 打印 request_total_ms / end_to_end_ms / server_total_ms
+This will:
+1. Generate 320x240 RGB JPEG locally
+2. Generate 320x240 depth PNG locally
+3. Call /navigator_reset
+4. Call /pointgoal_step_fast repeatedly
+5. Print request_total_ms / end_to_end_ms / server_total_ms
 
-3.4 如果你也想把编码开销一起测进去
-----------------------------------
+3.4 Include re-encoding in the measurement
+------------------------------------------
 cd /home/nyu/sentry_planner/logo_low_latency_client
 source .venv/bin/activate
 python3 -m client.benchmark_transport \
@@ -150,17 +150,17 @@ python3 -m client.benchmark_transport \
   --reencode-each-frame \
   --show-stats
 
-说明
-----
-1. 不带 --reencode-each-frame：更接近“纯传输链路”测试。
-2. 带 --reencode-each-frame：更接近“采集端压缩后再发”的整体开销。
+Notes
+-----
+1. Without --reencode-each-frame: closer to “transport only”.
+2. With --reencode-each-frame: closer to end-to-end capture+compress+send.
 
 
-4. 采集机运行 HTTP fast 客户端
-==============================
+4. Run HTTP fast client on capture machine
+==========================================
 
-4.1 标准运行命令
-----------------
+4.1 Standard command
+--------------------
 source /opt/ros/humble/setup.zsh
 cd /home/nyu/sentry_planner/logo_low_latency_client
 source .venv/bin/activate
@@ -186,8 +186,8 @@ python3 -m client.main \
   --save-json \
   --latest-json results/latest_result.json
 
-4.2 如果你的话题名不同
------------------------
+4.2 If your topic names differ
+--------------------------------
 source /opt/ros/humble/setup.zsh
 cd /home/nyu/sentry_planner/logo_low_latency_client
 source .venv/bin/activate
@@ -197,10 +197,10 @@ python3 -m client.main \
   --server-url http://10.224.36.118:19999 \
   --goal-x 3.0 \
   --goal-y 0.5 \
-  --rgb-topic <你的RGB话题> \
-  --depth-topic <你的Depth话题> \
-  --rgb-info-topic <你的RGB camera_info话题> \
-  --depth-info-topic <你的Depth camera_info话题> \
+  --rgb-topic <your_rgb_topic> \
+  --depth-topic <your_depth_topic> \
+  --rgb-info-topic <your_rgb_camera_info_topic> \
+  --depth-info-topic <your_depth_camera_info_topic> \
   --rgb-width 320 \
   --rgb-height 240 \
   --depth-width 320 \
@@ -213,12 +213,12 @@ python3 -m client.main \
   --save-json \
   --latest-json results/latest_result.json
 
-4.3 如果 depth 是 float 深度
-----------------------------
-默认会按米转成 uint16 毫米：
+4.3 If depth is float (meters)
+------------------------------
+Default converts meters to uint16 millimeters:
 --depth-float-scale 1000
 
-例如：
+Example:
 python3 -m client.main \
   --transport http_fast \
   --server-url http://10.224.36.118:19999 \
@@ -230,11 +230,11 @@ python3 -m client.main \
   --show-stats
 
 
-5. 运行后预期日志
-=================
+5. Expected log after startup
+=============================
 
-正常情况下，日志会依次出现类似：
---------------------------------
+In normal operation you should see something like:
+--------------------------------------------------
 ROS capture node subscribed ...
 ROS capture thread started.
 Sender loop started ...
@@ -242,36 +242,36 @@ First paired RGB-D frame captured ...
 navigator_reset ok ...
 frame=... | transport=http_fast | end_to_end=... | server_total=...
 
-如果只停在前 3 行
------------------
-通常代表：
-1. RGB / depth / camera_info 没到齐。
-2. RGB 和 depth 时间戳差太大，没配成一对。
-3. 话题名填错。
+If it stops after the first three lines
+-----------------------------------------
+Usually:
+1. RGB / depth / camera_info not all available.
+2. RGB and depth timestamps too far apart (not paired).
+3. Wrong topic names.
 
 
-6. latest_result.json 和逐帧 JSON
-=================================
+6. latest_result.json and per-frame JSON
+========================================
 
-6.1 看最近一次结果
-------------------
+6.1 View latest result
+----------------------
 cat /home/nyu/sentry_planner/logo_low_latency_client/results/latest_result.json
 
-6.2 美化输出
-------------
+6.2 Pretty print
+----------------
 python3 -m json.tool /home/nyu/sentry_planner/logo_low_latency_client/results/latest_result.json
 
-6.3 看每帧历史结果
-------------------
+6.3 List frame history
+----------------------
 ls -lh /home/nyu/sentry_planner/logo_low_latency_client/results
 
 
-7. 如何判断延迟是否降下来了
-===========================
+7. How to tell if latency improved
+==================================
 
-7.1 直接看客户端日志
---------------------
-重点看这些字段：
+7.1 From client log
+-------------------
+Watch:
 capture_ts_ms
 encode_start_ts_ms
 send_start_ts_ms
@@ -282,53 +282,53 @@ request_total_ms
 roundtrip_ms
 end_to_end_ms
 
-7.2 如果服务端返回 timing
--------------------------
-再看：
+7.2 If server returns timing
+----------------------------
+Also:
 server_parse_ms
 server_decode_ms
 server_inference_ms
 server_total_ms
 
-7.3 实际判断逻辑
-----------------
-1. LoGoPlanner 推理本体大约 0.55s 到 0.65s。
-2. 所以优化重点是把 request_total_ms 和 end_to_end_ms 压下去。
-3. 如果和旧的 raw 上传 / multipart 相比，这两个值明显下降，就说明链路优化有效。
+7.3 Heuristic
+-------------
+1. LoGoPlanner inference is roughly 0.55s–0.65s.
+2. Focus on pushing down request_total_ms and end_to_end_ms.
+3. If both drop vs old raw upload / multipart, the path is better.
 
 
-8. GPU 推理机侧常用检查
-=======================
+8. Common checks on GPU machine
+===============================
 
-8.1 看 19999 端口是否在监听
----------------------------
+8.1 Port 19999 listening
+------------------------
 ss -lntp | grep 19999
 
-8.2 本机打 reset
+8.2 Local reset
 ----------------
 curl -v \
   -H 'Content-Type: application/json' \
   -d '{"intrinsic":[[1,0,0],[0,1,0],[0,0,1]],"stop_threshold":[-1.0],"batch_size":1}' \
   http://127.0.0.1:19999/navigator_reset
 
-8.3 如果采集机打不过来
-----------------------
-检查：
-1. 防火墙
-2. 两台机器能否互 ping
-3. 服务端是否真的绑定在 0.0.0.0:19999 而不是 127.0.0.1:19999
+8.3 If capture machine cannot reach server
+------------------------------------------
+Check:
+1. Firewall
+2. Mutual ping
+3. Server binds 0.0.0.0:19999 not 127.0.0.1:19999
 
 
-9. ZMQ 模式预留命令
-===================
+9. ZMQ mode (placeholder)
+=========================
 
-当前说明
---------
-1. 这不是当前主链路。
-2. 只有当服务端也提供 ZMQ bridge 之后，才用下面这条。
+Current notes
+-------------
+1. Not the main path today.
+2. Use below only when the server exposes a ZMQ bridge.
 
-采集机运行 ZMQ 客户端
----------------------
+Run ZMQ client on capture machine
+---------------------------------
 source /opt/ros/humble/setup.zsh
 cd /home/nyu/sentry_planner/logo_low_latency_client
 source .venv/bin/activate
@@ -347,16 +347,16 @@ python3 -m client.main \
   --show-stats
 
 
-10. 推荐终端分工
-================
+10. Suggested terminal layout
+=============================
 
-终端 1：采集机上看话题
-----------------------
+Terminal 1: watch topics on capture machine
+-------------------------------------------
 source /opt/ros/humble/setup.zsh
 ros2 topic list | grep -E 'usb_cam_color|camera/depth|image_raw|camera_info'
 
-终端 2：采集机上跑低延迟客户端
-------------------------------
+Terminal 2: low-latency client on capture machine
+-------------------------------------------------
 source /opt/ros/humble/setup.zsh
 cd /home/nyu/sentry_planner/logo_low_latency_client
 source .venv/bin/activate
@@ -372,40 +372,40 @@ python3 -m client.main \
   --show-stats \
   --save-json
 
-终端 3：GPU 机上看服务日志
---------------------------
-按你现在自己的 LoGoPlanner 服务启动方式查看日志，重点盯：
+Terminal 3: service logs on GPU
+--------------------------------
+Follow your LoGoPlanner server logs; watch:
 server_parse_ms
 server_decode_ms
 server_inference_ms
 server_total_ms
 
 
-11. 快速排障
-============
+11. Quick troubleshooting
+===========================
 
-11.1 reset 能通但一直不出 frame 结果
------------------------------------
-优先查 topic：
+11.1 reset works but no frame results
+-------------------------------------
+Check topics:
 ros2 topic hz /usb_cam_color/image_raw
 ros2 topic hz /camera/depth/image_raw
 ros2 topic echo /usb_cam_color/camera_info --once
 ros2 topic echo /camera/depth/camera_info --once
 
-11.2 客户端报 msgpack / cv2 / rclpy 缺失
----------------------------------------
-重新进虚拟环境：
+11.2 Client errors: msgpack / cv2 / rclpy missing
+---------------------------------------------------
+Re-enter venv:
 cd /home/nyu/sentry_planner/logo_low_latency_client
 source /opt/ros/humble/setup.zsh
 source .venv/bin/activate
 pip install -r requirements.txt
 
-11.3 你现在不想碰 sentry_planner 内部视觉链
-------------------------------------------
-那就不要起：
+11.3 Skip sentry_planner internal vision stack
+-----------------------------------------------
+Do not start:
 ros2 launch rm_vision_bringup vision_bringup.launch.py
 
-11.4 你当前主要目标
-------------------
-是把另一台 RGB-D 采集机的数据压缩后发到这台 GPU 机：
+11.4 Primary goal right now
+---------------------------
+Compress data from the other RGB-D capture machine and send to this GPU:
 http://10.224.36.118:19999

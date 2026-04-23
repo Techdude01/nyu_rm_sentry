@@ -37,7 +37,7 @@ namespace gazebo
                 avia_infos.emplace_back();
                 avia_infos.back().time = data[0];
                 avia_infos.back().azimuth = data[1] * deg_2_rad;
-                avia_infos.back().zenith = data[2] * deg_2_rad - M_PI_2; //转化成标准的右手系角度
+                avia_infos.back().zenith = data[2] * deg_2_rad - M_PI_2; // Convert to standard right-handed angles
             } else {
             RCLCPP_ERROR(rclcpp::get_logger("convertDataToRotateInfo"), "data size is not 3!");
         }
@@ -130,7 +130,7 @@ namespace gazebo
 
     void LivoxPointsPlugin::OnNewLaserScans() {
         if (!rayShape) {
-            return; // 检查是否已经初始化了 rayShape
+            return; // rayShape not initialized yet
         }
 
         std::vector<std::pair<int, AviaRotateInfo>> points_pair;
@@ -141,14 +141,14 @@ namespace gazebo
         msgs::LaserScan *scan = laserMsg.mutable_scan();
         InitializeScan(scan);
 
-        // 创建自定义消息 pp_livox，用于发布 Livox CustomMsg 类型消息
+        // Build CustomMsg pp_livox for Livox driver format
         livox_ros_driver2::msg::CustomMsg pp_livox;
         pp_livox.header.stamp = node_->get_clock()->now();
         pp_livox.header.frame_id = raySensor->Name();
         int count = 0;
         boost::chrono::high_resolution_clock::time_point start_time = boost::chrono::high_resolution_clock::now();
 
-        // 用于 PointCloud2 类型消息发布
+        // PointCloud2 output
         sensor_msgs::msg::PointCloud2 cloud2;
         cloud2.header.stamp = node_->get_clock()->now();
         cloud2.header.frame_id = raySensor->Name();
@@ -161,31 +161,31 @@ namespace gazebo
         sensor_msgs::PointCloud2Iterator<float> out_y(cloud2, "y");
         sensor_msgs::PointCloud2Iterator<float> out_z(cloud2, "z");
 
-        // 遍历射线扫描点对
+        // Iterate ray sample pairs
         for (const auto &pair : points_pair) {
             auto range = rayShape->GetRange(pair.first);
             auto intensity = rayShape->GetRetro(pair.first);
 
-            // 处理超出范围的数据
+            // Out-of-range returns
             if (range <= RangeMin() || range >= RangeMax()) {
                 range = 0;
             }
 
-            // 计算点云数据
+            // Compute point in sensor frame
             auto rotate_info = pair.second;
             ignition::math::Quaterniond ray;
             ray.Euler(ignition::math::Vector3d(0.0, rotate_info.zenith, rotate_info.azimuth));
             auto axis = ray * ignition::math::Vector3d(1.0, 0.0, 0.0);
             auto point = range * axis;
 
-            // 填充 CustomMsg 点云消息
+            // Fill CustomMsg point
             livox_ros_driver2::msg::CustomPoint p;
             p.x = point.X();
             p.y = point.Y();
             p.z = point.Z();
             p.reflectivity = intensity;
 
-            // 填充 PointCloud2 点云消息
+            // Fill PointCloud2
             *out_x = point.X();
             *out_y = point.Y();
             *out_z = point.Z();
@@ -194,12 +194,12 @@ namespace gazebo
             ++out_y;
             ++out_z;
 
-            // 计算时间戳偏移
+            // Timestamp offset for this point
             boost::chrono::high_resolution_clock::time_point end_time = boost::chrono::high_resolution_clock::now();
             boost::chrono::nanoseconds elapsed_time = boost::chrono::duration_cast<boost::chrono::nanoseconds>(end_time - start_time);
             p.offset_time = elapsed_time.count();
 
-            // 将点云数据添加到 CustomMsg 消息中
+            // Append to CustomMsg
             pp_livox.points.push_back(p);
             count++;
         }
@@ -208,11 +208,11 @@ namespace gazebo
             scanPub->Publish(laserMsg);
         }
 
-        // 发布 CustomMsg 消息
+        // Publish CustomMsg
         pp_livox.point_num = count;
         custom_pub->publish(pp_livox);
 
-        // 发布 PointCloud2 类型消息
+        // Publish PointCloud2
         cloud2_pub->publish(cloud2);
     }
 

@@ -8,9 +8,9 @@ namespace rm_behavior_tree
 {
 
 /**
- * @brief condition节点，用于判断队友平均血量是否高于敌方平均血量
- * @param[in] message 我方全体机器人血量话题id
- * @param[in] friend_color 我方颜色
+ * @brief Condition: whether ally average HP is greater than enemy average HP.
+ * @param[in] message All-robot HP topic (blackboard)
+ * @param[in] friend_color Ally team: "red" or "blue"
  */
 class IsFriendOKAction : public BT::SimpleConditionNode
 {

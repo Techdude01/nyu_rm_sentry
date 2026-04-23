@@ -16,9 +16,9 @@
   <!-- base_link to livox_frame -->
   <xacro:arg name="xyz" default="0.12 0.0 0.175" />
   <xacro:arg name="rpy" default="0 0 0" />
-  <!-- true: 仿真用 Gazebo 里程计，定位更稳；false: 用 Fast-LIO 提供 odom -->
+  <!-- true: Gazebo odom in sim, stabler loc; false: Fast-LIO provides odom -->
   <xacro:arg name="use_gazebo_odom" default="false" />
-  <!-- 直接用 $(arg ...) 赋值，在条件里比较字符串 -->
+  <!-- Assign from $(arg ...) and compare as string in conditions -->
   <xacro:property name="use_gazebo_odom_val" value="$(arg use_gazebo_odom)" />
 
   <link name="dummy"/>
@@ -183,7 +183,7 @@
     </inertial>
   </link>
 
-  <!-- Gazebo插件设置相关 -->
+  <!-- Gazebo plugin / visual material setup -->
   <gazebo reference="base_link">
     <material>Gazebo/Orange</material>
   </gazebo>
@@ -213,7 +213,7 @@
       <ros>
         <namespace>/</namespace>
         <remapping>cmd_vel:=cmd_vel_chassis</remapping>
-        <!-- use_gazebo_odom 时发布到 /Odometry，与 Nav2/velocity_smoother 一致 -->
+        <!-- When use_gazebo_odom: publish to /Odometry for Nav2/velocity_smoother -->
         <xacro:if value="${'$(arg use_gazebo_odom)' == 'true'}">
           <remapping>odom:=Odometry</remapping>
         </xacro:if>
@@ -223,7 +223,7 @@
       </ros>
       <update_rate>100</update_rate>
       <publish_rate>10</publish_rate>
-      <!-- use_gazebo_odom 时由 Gazebo 发布 odom->base_link，AMCL 用其作运动模型，定位更稳 -->
+      <!-- use_gazebo_odom: Gazebo publishes odom->base_link; AMCL uses it as motion model -->
       <xacro:if value="${'$(arg use_gazebo_odom)' == 'true'}">
         <publish_odom>true</publish_odom>
         <publish_odom_tf>true</publish_odom_tf>
@@ -233,7 +233,7 @@
         <publish_odom_tf>false</publish_odom_tf>
       </xacro:unless>
       <odometry_frame>odom</odometry_frame>
-      <!-- use_gazebo_odom 时发布 odom->dummy，让 robot_state_publisher 的 dummy->base_link 接续，避免 base_link 有两个父节点 -->
+      <!-- use_gazebo_odom: publish odom->dummy; robot_state_publisher chains dummy->base_link (single parent for base_link) -->
       <xacro:if value="${'$(arg use_gazebo_odom)' == 'true'}">
         <robot_base_frame>dummy</robot_base_frame>
       </xacro:if>

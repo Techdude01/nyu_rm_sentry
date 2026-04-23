@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-订阅 /Odometry 话题并发布对应的 TF
-用于解决 gazebo_ros_planar_move 不发布 TF 的问题
+Subscribe to /Odometry and publish the matching TF.
+Workaround for gazebo_ros_planar_move not publishing TF.
 """
 import rclpy
 from rclpy.node import Node
@@ -29,7 +29,7 @@ class OdomToTF(Node):
             10
         )
         self.get_logger().info(
-            f'odom_to_tf: 订阅 {odom_topic} 并发布 TF '
+            f'odom_to_tf: subscribed to {odom_topic}, publishing TF '
             f'(use_current_time_for_tf={self.use_current_time_for_tf})'
         )
 

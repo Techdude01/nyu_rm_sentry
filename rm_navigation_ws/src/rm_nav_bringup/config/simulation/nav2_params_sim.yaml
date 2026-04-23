@@ -1,7 +1,7 @@
 amcl:
   ros__parameters:
     use_sim_time: True
-    alpha1: 0.02   # Gazebo 里程计近乎理想，进一步提高对里程计的信任
+    alpha1: 0.02   # Gazebo odometry is near-ideal; higher trust in odom
     alpha2: 0.02
     alpha3: 0.02
     alpha4: 0.02
@@ -14,18 +14,18 @@ amcl:
     global_frame_id: "map"
     lambda_short: 0.1
     laser_likelihood_max_dist: 2.0
-    laser_max_range: 20.0    # 与 pointcloud_to_laserscan_sim 保持一致
-    laser_min_range: 0.1     # 忽略极近读数（机器人本体反射）
+    laser_max_range: 20.0    # Match pointcloud_to_laserscan_sim
+    laser_min_range: 0.1     # Ignore very close returns (self-reflection)
     laser_model_type: "likelihood_field"
     max_beams: 120
-    max_particles: 5000        # 参考 my_nav2_params：支持全局定位
+    max_particles: 5000        # Per my_nav2_params: global localization headroom
     min_particles: 1000
     odom_frame_id: "odom"
     pf_err: 0.05
-    pf_z: 0.95               # 0.99→0.95，减少误判「丢失」触发的恢复（乱飞主因之一）
-    recovery_alpha_fast: 0.0  # 0.1→0.0，禁用随机粒子注入，避免定位乱跳
-    recovery_alpha_slow: 0.0  # 0.001→0.0，同上
-    resample_interval: 2      # 1→2，降低重采样频率，保持粒子多样性
+    pf_z: 0.95               # 0.99→0.95: fewer false “lost” recoveries (major flyaway cause)
+    recovery_alpha_fast: 0.0  # 0.1→0.0: disable random particle injection
+    recovery_alpha_slow: 0.0  # 0.001→0.0: same
+    resample_interval: 2      # 1→2: lower resample rate, keep particle diversity
     robot_model_type: "nav2_amcl::OmniMotionModel"
     save_pose_rate: 0.5
     sigma_hit: 0.2
@@ -38,7 +38,7 @@ amcl:
     z_rand: 0.5
     z_short: 0.05
     scan_topic: scan
-    # 仿真：启动时即发布 map 坐标系，无需手动 2D Pose Estimate
+    # Sim: publish map frame at startup; no manual 2D Pose Estimate
     set_initial_pose: true
     initial_pose:
       x: 0.8
@@ -98,9 +98,9 @@ bt_navigator:
 controller_server:
   ros__parameters:
     use_sim_time: True
-    controller_frequency: 25.0  # 再提一档控制频率，低速全向导航更顺
+    controller_frequency: 25.0  # Higher control rate for smoother low-speed omni nav
     min_x_velocity_threshold: 0.001
-    min_y_velocity_threshold: 0.001  # 关键：全向轮必须 0.001，0.1 会截断所有小 y 速度
+    min_y_velocity_threshold: 0.001  # Omni: use 0.001; 0.1 clips small vy
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.3
     progress_checker_plugin: "progress_checker"
@@ -108,13 +108,13 @@ controller_server:
     controller_plugins: ["FollowPath"]
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.10  # 允许更细小的持续前进，不容易被误判为没动
+      required_movement_radius: 0.10  # Allow smaller progress; less “stuck” false positives
       movement_time_allowance: 15.0
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 6.30      # 接近 2π，完全忽略朝向检查（全向轮）
+      yaw_goal_tolerance: 6.30      # ~2π: effectively ignore yaw (omni)
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
       time_steps: 40
@@ -184,7 +184,7 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 20.0   # 保持和传感器/控制接近，先不再推太高
+      update_frequency: 20.0   # Match sensor/controller; avoid pushing higher for now
       publish_frequency: 10.0
       global_frame: map
       robot_base_frame: base_link_fake
@@ -192,7 +192,7 @@ local_costmap:
       rolling_window: true
       width: 4
       height: 4
-      resolution: 0.1          # 参考 my_nav2_params
+      resolution: 0.1          # Per my_nav2_params
       transform_tolerance: 0.5
       robot_radius: 0.22
       plugins: ["voxel2d_layer", "inflation_layer"]
@@ -209,7 +209,7 @@ local_costmap:
         z_voxels: 16
         max_obstacle_height: 2.0
         mark_threshold: 0
-        unknown_threshold: 15          # 低于此阈值视为 unknown
+        unknown_threshold: 15          # Below this count → unknown
         observation_sources: scan
         scan:
           topic: /scan
@@ -222,8 +222,8 @@ local_costmap:
           clearing: True
           marking: True
           data_type: "LaserScan"
-          observation_persistence: 0.0  # 只用最新观测，不累积旧数据
-          inf_is_valid: True            # 允许无穷远读数清除虚假残留障碍
+          observation_persistence: 0.0  # Latest observation only; no old data buffer
+          inf_is_valid: True            # Infinite range clears spurious stuck obstacles
       static_layer:
         map_subscribe_transient_local: True
       always_send_full_costmap: True
@@ -243,7 +243,7 @@ global_costmap:
       robot_base_frame: base_link_fake
       use_sim_time: True
       robot_radius: 0.22
-      resolution: 0.1          # 参考 my_nav2_params
+      resolution: 0.1          # Per my_nav2_params
       transform_tolerance: 0.5
       track_unknown_space: false
       plugins: ["static_layer", "inflation_layer"]
@@ -251,16 +251,16 @@ global_costmap:
         plugin: "spatio_temporal_voxel_layer/SpatioTemporalVoxelLayer"
         # https://github.com/SteveMacenski/spatio_temporal_voxel_layer
         enabled:                  false
-        voxel_decay:              15.0                              # 如果是线性衰减，单位为秒；如果是指数衰减，则为 e 的 n 次方
-        decay_model:              0                                 # 衰减模型，0=线性，1=指数，-1=持久
-        voxel_size:               0.08   # 0.05->0.08 减轻 STVL 计算                              # 每个体素的尺寸，单位为米
+        voxel_decay:              15.0                              # Linear: seconds; exponential: e^n scale
+        decay_model:              0                                 # 0=linear, 1=exponential, -1=persistent
+        voxel_size:               0.08   # 0.05->0.08: lighter STVL; voxel size (m)
         track_unknown_space:      true                              # default space is unknown
         mark_threshold:           0                                 # voxel height
         update_footprint_enabled: true
         combination_method:       1                                 # 1=max, 0=override
-        origin_z:                 0.0                               # 单位为米
-        publish_voxel_map:        false                             # true 加重卡顿，仿真时关闭
-        transform_tolerance:      0.2                               # 单位为秒
+        origin_z:                 0.0                               # meters
+        publish_voxel_map:        false                             # true is heavy; off in sim
+        transform_tolerance:      0.2                               # seconds
         mapping_mode:             false                             # default off, saves map not for navigation
         map_save_duration:        60.0                              # default 60s, how often to autosave
         observation_sources:      livox_mark livox_clear
@@ -269,9 +269,9 @@ global_costmap:
           topic: /segmentation/obstacle
           marking: true
           clearing: false
-          obstacle_range: 3.0                                       # 障碍物检测范围，单位为米
-          min_obstacle_height: 0.2                                  # 最小障碍物高度，单位为米
-          max_obstacle_height: 2.0                                  # 最大障碍物高度，单位为米
+          obstacle_range: 3.0                                       # Obstacle range (m)
+          min_obstacle_height: 0.2                                  # Min obstacle height (m)
+          max_obstacle_height: 2.0                                  # Max obstacle height (m)
           expected_update_rate: 0.0                                 # default 0, if not updating at this rate at least, remove from buffer
           observation_persistence: 0.0                              # default 0, use all measurements taken during now-value, 0=latest 
           inf_is_valid: false                                       # default false, for laser scans
@@ -284,13 +284,13 @@ global_costmap:
           topic: /segmentation/obstacle
           marking: false
           clearing: true
-          max_z: 8.0                                                # 最大 Z 坐标，单位为米
-          min_z: 1.0                                                # 最小 Z 坐标，单位为米
-          vertical_fov_angle: 1.029                                 # 垂直视场角，单位为弧度，For 3D lidars it's the symmetric FOV about the planar axis.
+          max_z: 8.0                                                # Max Z (m)
+          min_z: 1.0                                                # Min Z (m)
+          vertical_fov_angle: 1.029                                 # Vertical FOV (rad). For 3D lidars: symmetric about planar axis.
           vertical_fov_padding: 0.05                                # 3D Lidar only. Default 0, in meters 
-          horizontal_fov_angle: 6.29                                # 3D 激光雷达水平视场角
+          horizontal_fov_angle: 6.29                                # 3D lidar horizontal FOV (rad)
           decay_acceleration: 5.0                                   # default 0, 1/s^2. 
-          model_type: 1                                             # 0=深度相机，1=3D激光雷达
+          model_type: 1                                             # 0=depth camera, 1=3D lidar
 
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
@@ -332,7 +332,7 @@ recoveries_server:
     robot_base_frame: base_link_fake
     transform_timeout: 0.1
     use_sim_time: True
-    simulate_ahead_time: 2.0   # 参考 my_nav2_params
+    simulate_ahead_time: 2.0   # Per my_nav2_params
     max_rotational_vel: 20.0
     min_rotational_vel: 0.4
     rotational_acc_lim: 10.0

@@ -1,7 +1,7 @@
 /**
   ****************************(C) COPYRIGHT 2023 Polarbear*************************
   * @file       rm_rune_detector_node.hpp
-  * @brief      能量机关检测模块
+  * @brief      Energy rune detector node
   * @note
   * @history
   *  Version    Date            Author          Modification

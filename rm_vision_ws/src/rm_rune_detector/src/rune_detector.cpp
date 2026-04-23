@@ -1,7 +1,7 @@
 /**
   ****************************(C) COPYRIGHT 2023 Polarbear*************************
   * @file       rune_detector.cpp
-  * @brief      能量机关检测模块检测图片中的能量机关靶标
+  * @brief      Energy rune detector: finds rune strike plates in images
   * @note
   * @history
   *  Version    Date            Author          Modification
@@ -32,11 +32,11 @@
 namespace rm_rune_detector
 {
     /**
-     * @brief RuneDetector类的构造函数
-     * @param bin_thres 二值化阈值
-     * @param color 检测颜色
-     * @param t 靶标识别相关参数
-     * @param hsv 红色和蓝色HSV颜色空间阈值
+     * @brief Construct RuneDetector
+     * @param bin_thres Grayscale binarization threshold
+     * @param color Target color id
+     * @param t Target geometry thresholds
+     * @param hsv Red / blue HSV thresholds
      */
     RuneDetector::RuneDetector(const int &bin_thres, const int &color, const TargetParams &t, const HSVParams &hsv)
         : binary_thres(bin_thres), detect_color(color), t(t), hsv(hsv)
@@ -44,13 +44,13 @@ namespace rm_rune_detector
     }
 
     /**
-     * @brief 检测函数，用于检测输入图像中的目标
-     * @param input 输入图像
-     * @return 检测到的靶标列表
+     * @brief Run detection on the input image
+     * @param input BGR or RGB image (per pipeline)
+     * @return Detected rune targets
      */
     std::vector<Target> RuneDetector::Detect(const cv::Mat &input)
     {
-        // TODO:完成能量机关靶标的检测与状态判别
+        // TODO: detect rune plates and classify activation state
         binary_img = PreprocessImage(input);
         std::vector<Target> res_tmp;
         targets_ = res_tmp;
@@ -58,8 +58,8 @@ namespace rm_rune_detector
     }
 
     /**
-     * @brief 对输入图像进行预处理
-     * @param rgb_img 输入图像
+     * @brief Preprocess input image
+     * @param rgb_img Input image
      */
     cv::Mat RuneDetector::PreprocessImage(const cv::Mat &rgb_img)
     {
@@ -73,10 +73,10 @@ namespace rm_rune_detector
     }
 
     /**
-     * @brief 在输入图像中寻找可能的靶标
-     * @param rbg_img rgb图像
-     * @param binary_img 二值化图像
-     * @return 可能的靶标列表
+     * @brief Find candidate targets in the image
+     * @param rbg_img RGB image
+     * @param binary_img Binarized image
+     * @return Candidate ellipses / targets
      */
     std::vector<Ellipse> RuneDetector::FindPossibleTargets(const cv::Mat &rbg_img, const cv::Mat &binary_img)
     {
