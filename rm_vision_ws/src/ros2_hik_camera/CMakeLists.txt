@@ -14,9 +14,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+find_package(camera_info_manager REQUIRED)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/hik_camera_node.cpp
+)
+ament_target_dependencies(${PROJECT_NAME}
+  camera_info_manager
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC hikSDK/include)
