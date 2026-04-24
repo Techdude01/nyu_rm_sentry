@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOG_DIR="/home/nyu/sentry_planner/logs/autostart"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SENTRY_PLANNER_ROOT="${SENTRY_PLANNER_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+NAV_WS_ROOT="${NAV_WS_ROOT:-$HOME/nav_ws}"
+NYUSH_VISION_ROOT="${NYUSH_VISION_ROOT:-$HOME/Codespace/nyush-rm-vision}"
+
+LOG_DIR="$SENTRY_PLANNER_ROOT/logs/autostart"
 mkdir -p "$LOG_DIR"
 
-export PATH="/home/nyu/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 unset BASH_ENV || true
 unset ZDOTDIR || true
 
@@ -23,8 +28,8 @@ rm -f /tmp/nyush-rm-sentry-vision /tmp/nyush-rm-sentry-radar >/dev/null 2>&1 || 
 sleep 1
 
 ROS_SETUP=". /opt/ros/humble/setup.bash"
-PLANNER_SETUP=". /home/nyu/sentry_planner/install/setup.bash"
-DECISION_SETUP=". /home/nyu/sentry_planner/rm_decision_ws/install/setup.bash"
+PLANNER_SETUP=". $SENTRY_PLANNER_ROOT/install/setup.bash"
+DECISION_SETUP=". $SENTRY_PLANNER_ROOT/rm_decision_ws/install/setup.bash"
 
 wait_for_vision_link() {
   local link_path="/tmp/nyush-rm-sentry-vision"
@@ -54,15 +59,15 @@ if command -v xterm >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ] && [ -f "${XAUTHORI
   wait_for_vision_link
 
   echo "[autostart] Starting vision detect (web+send) in xterm..."
-  xterm -T "vision_detect" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; cd /home/nyu/Codespace/nyush-rm-vision && just test detect --web --send; read -r -p 'Press Enter to close...'" &
+  xterm -T "vision_detect" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; cd \"$NYUSH_VISION_ROOT\" && just test detect --web --send; read -r -p 'Press Enter to close...'" &
 
   sleep 2
 
   cleanup_nav_bt_processes
 
   echo "[autostart] Starting nav + BT in xterm..."
-  xterm -T "nav_bt" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; $DECISION_SETUP; cd /home/nyu/nav_ws && \
-MAP_FILE=\"/home/nyu/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml\" \
+  xterm -T "nav_bt" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; $DECISION_SETUP; cd \"$NAV_WS_ROOT\" && \
+MAP_FILE=\"$SENTRY_PLANNER_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml\" \
 BT_STYLE=center_attack_fullstack \
 BT_START_GOAL=\"-0.655;0.543;0; 0;0;0;1\" \
 BT_END_GOAL=\"-5.472;3.571;0; 0;0;0;1\" \
@@ -80,7 +85,7 @@ else
   wait_for_vision_link
 
   echo "[autostart] Starting vision detect (web+send)..."
-  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd /home/nyu/Codespace/nyush-rm-vision && just test detect --web --send" \
+  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd \"$NYUSH_VISION_ROOT\" && just test detect --web --send" \
     >"$LOG_VISION" 2>&1 &
 
   sleep 2
@@ -88,8 +93,8 @@ else
   cleanup_nav_bt_processes
 
   echo "[autostart] Starting nav + BT..."
-  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; $DECISION_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd /home/nyu/nav_ws && \
-MAP_FILE=\"/home/nyu/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml\" \
+  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; $DECISION_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd \"$NAV_WS_ROOT\" && \
+MAP_FILE=\"$SENTRY_PLANNER_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml\" \
 BT_STYLE=center_attack_fullstack \
 BT_START_GOAL=\"-0.655;0.543;0; 0;0;0;1\" \
 BT_END_GOAL=\"-5.472;3.571;0; 0;0;0;1\" \

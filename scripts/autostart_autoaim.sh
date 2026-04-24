@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOG_DIR="/home/nyu/sentry_planner/logs/autostart"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SENTRY_PLANNER_ROOT="${SENTRY_PLANNER_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+NYUSH_VISION_ROOT="${NYUSH_VISION_ROOT:-$HOME/Codespace/nyush-rm-vision}"
+
+LOG_DIR="$SENTRY_PLANNER_ROOT/logs/autostart"
 mkdir -p "$LOG_DIR"
 
-export PATH="/home/nyu/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 unset BASH_ENV || true
 unset ZDOTDIR || true
 
@@ -16,7 +20,7 @@ LOG_AUTOAIM="$LOG_DIR/autoaim_keepalive.log"
 : >"$LOG_AUTOAIM"
 
 ROS_SETUP=". /opt/ros/humble/setup.bash"
-PLANNER_SETUP=". /home/nyu/sentry_planner/install/setup.bash"
+PLANNER_SETUP=". $SENTRY_PLANNER_ROOT/install/setup.bash"
 
 AUTOAIM_MODE="${AUTOAIM_MODE:-autoaim}"
 AUTOAIM_SCAN_YAW_RATE_DEG_S="${AUTOAIM_SCAN_YAW_RATE_DEG_S:-120.0}"
@@ -47,12 +51,12 @@ if command -v xterm >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ] && [ -f "${XAUTHORI
   wait_for_vision_link
 
   echo "[autostart] Starting vision detect (web+send) in xterm..."
-  xterm -T "vision_detect" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; cd /home/nyu/Codespace/nyush-rm-vision && just test detect --web --send; read -r -p 'Press Enter to close...'" &
+  xterm -T "vision_detect" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; cd \"$NYUSH_VISION_ROOT\" && just test detect --web --send; read -r -p 'Press Enter to close...'" &
 
   sleep 2
 
   echo "[autostart] Starting autoaim keepalive in xterm..."
-  xterm -T "autoaim_keepalive" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; cd /home/nyu/sentry_planner && \
+  xterm -T "autoaim_keepalive" -e bash -c "$ROS_SETUP; $PLANNER_SETUP; cd \"$SENTRY_PLANNER_ROOT\" && \
 AUTOAIM_MODE=$AUTOAIM_MODE \
 AUTOAIM_SCAN_YAW_RATE_DEG_S=$AUTOAIM_SCAN_YAW_RATE_DEG_S \
 AUTOAIM_SEARCH_PITCH_DEG=$AUTOAIM_SEARCH_PITCH_DEG \
@@ -66,13 +70,13 @@ else
   wait_for_vision_link
 
   echo "[autostart] Starting vision detect (web+send)..."
-  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd /home/nyu/Codespace/nyush-rm-vision && just test detect --web --send" \
+  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; echo \"[autostart] ROS_DISTRO=\${ROS_DISTRO:-}\"; command -v just; cd \"$NYUSH_VISION_ROOT\" && just test detect --web --send" \
     >"$LOG_VISION" 2>&1 &
 
   sleep 2
 
   echo "[autostart] Starting autoaim keepalive..."
-  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; cd /home/nyu/sentry_planner && \
+  nohup env -u BASH_ENV -u ZDOTDIR bash -c "$ROS_SETUP; $PLANNER_SETUP; cd \"$SENTRY_PLANNER_ROOT\" && \
 AUTOAIM_MODE=$AUTOAIM_MODE \
 AUTOAIM_SCAN_YAW_RATE_DEG_S=$AUTOAIM_SCAN_YAW_RATE_DEG_S \
 AUTOAIM_SEARCH_PITCH_DEG=$AUTOAIM_SEARCH_PITCH_DEG \

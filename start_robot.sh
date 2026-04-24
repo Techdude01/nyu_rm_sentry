@@ -7,6 +7,7 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$SCRIPT_DIR"
 NAV_WS_ROOT="${NAV_WS_ROOT:-$HOME/nav_ws}"
+SERIAL_SENDER_SCRIPT="${SERIAL_SENDER_SCRIPT:-$HOME/Codespace/nyush-rm-vision/serial_sender.py}"
 RM_VISION_WS_ROOT="${RM_VISION_WS_ROOT:-$SENTRY_ROOT/rm_vision_ws}"
 RM_DECISION_WS_ROOT="${RM_DECISION_WS_ROOT:-$SENTRY_ROOT/rm_decision_ws}"
 BT_STYLE="${BT_STYLE:-center_attack_simple}"
@@ -19,8 +20,8 @@ START_SERIAL_SENDER="${START_SERIAL_SENDER:-0}"
 RADAR_PTY="${RADAR_PTY:-}"
 SERIAL_SENDER_TOPIC="${SERIAL_SENDER_TOPIC:-/cmd_vel_chassis_bt}"
 SERIAL_SENDER_PORT="${SERIAL_SENDER_PORT:-$RADAR_PTY}"
-MAP_FILE="${MAP_FILE:-$HOME/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml}"
-NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-/home/nyu/nav_ws/my_nav2_params.yaml}"
+MAP_FILE="${MAP_FILE:-$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml}"
+NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-$HOME/nav_ws/my_nav2_params.yaml}"
 PUBLISH_NAV2_INITIAL_POSE="${PUBLISH_NAV2_INITIAL_POSE:-1}"
 NAV2_INITIAL_POSE_X="${NAV2_INITIAL_POSE_X:-0.8}"
 NAV2_INITIAL_POSE_Y="${NAV2_INITIAL_POSE_Y:-7.8}"
@@ -242,7 +243,7 @@ pkill -9 -f icp_registration 2>/dev/null || true
 pkill -9 -f rm_behavior_tree 2>/dev/null || true
 pkill -9 -f "$SENTRY_ROOT/scripts/bt_comm_adapter.py" 2>/dev/null || true
 if [ "$START_SERIAL_SENDER" = "1" ] && [ -n "$SERIAL_SENDER_PORT" ]; then
-    pkill -9 -f "/home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port $SERIAL_SENDER_PORT" 2>/dev/null || true
+    pkill -9 -f "$SERIAL_SENDER_SCRIPT --port $SERIAL_SENDER_PORT" 2>/dev/null || true
 fi
 sleep 2
 
@@ -265,6 +266,7 @@ if [ "$LOCALIZATION_MODE" = "icp" ]; then
 fi
 if [ "$START_SERIAL_SENDER" = "1" ]; then
     echo "   START_SERIAL_SENDER=1 ($SERIAL_SENDER_PORT <- $SERIAL_SENDER_TOPIC)"
+    echo "   SERIAL_SENDER_SCRIPT=$SERIAL_SENDER_SCRIPT"
 fi
 
 echo ">>> [2/11] Serial permissions (if this hangs, enter your password)..."
@@ -470,7 +472,7 @@ if [ "$START_SERIAL_SENDER" = "1" ]; then
         exit 1
     fi
     echo ">>> [11/11] Starting serial_sender ($SERIAL_SENDER_PORT <- $SERIAL_SENDER_TOPIC)..."
-    python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py         --port "$SERIAL_SENDER_PORT"         --ros2         --topic "$SERIAL_SENDER_TOPIC" &
+    python3 "$SERIAL_SENDER_SCRIPT"         --port "$SERIAL_SENDER_PORT"         --ros2         --topic "$SERIAL_SENDER_TOPIC" &
 else
     echo ">>> [11/11] Startup complete."
 fi

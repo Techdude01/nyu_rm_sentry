@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Fixed RMUL map (university league field); MAP_YAML env is not read
 MAP_YAML="$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL.yaml"
-NAV_PARAMS="${NAV_PARAMS:-/home/nyu/nav_ws/my_nav2_params.yaml}"
+NAV_PARAMS="${NAV_PARAMS:-$HOME/nav_ws/my_nav2_params.yaml}"
 BT_STYLE="${BT_STYLE:-center_attack_simple}"
 
 trap 'echo ">>> Stopping all..."; kill $(jobs -p) 2>/dev/null; exit' SIGINT

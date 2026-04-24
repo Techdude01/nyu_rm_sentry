@@ -5,13 +5,14 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$SCRIPT_DIR"
 NAV_WS_ROOT="${NAV_WS_ROOT:-$HOME/nav_ws}"
+SERIAL_SENDER_SCRIPT="${SERIAL_SENDER_SCRIPT:-$HOME/Codespace/nyush-rm-vision/serial_sender.py}"
 RM_VISION_WS_ROOT="${RM_VISION_WS_ROOT:-$SENTRY_ROOT/rm_vision_ws}"
 USE_SIM_TIME="${USE_SIM_TIME:-False}"
 ENABLE_RVIZ="${ENABLE_RVIZ:-1}"
 RVIZ_CONFIG="${RVIZ_CONFIG:-}"
 RESET_FASTRTPS_SHM="${RESET_FASTRTPS_SHM:-0}"
-MAP_FILE="${MAP_FILE:-$HOME/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml}"
-NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-/home/nyu/nav_ws/my_nav2_params.yaml}"
+MAP_FILE="${MAP_FILE:-$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml}"
+NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-$HOME/nav_ws/my_nav2_params.yaml}"
 PUBLISH_NAV2_INITIAL_POSE="${PUBLISH_NAV2_INITIAL_POSE:-0}"
 NAV2_INITIAL_POSE_X="${NAV2_INITIAL_POSE_X:-0.8}"
 NAV2_INITIAL_POSE_Y="${NAV2_INITIAL_POSE_Y:-7.8}"
@@ -227,7 +228,7 @@ pkill -9 -f rm_behavior_tree 2>/dev/null || true
 pkill -9 -f "$SENTRY_ROOT/scripts/bt_comm_adapter.py" 2>/dev/null || true
 pkill -9 -f "ros2 topic pub -r 10 /robot_control rm_decision_interfaces/msg/RobotControl" 2>/dev/null || true
 if [ "$START_SERIAL_SENDER" = "1" ] && [ -n "$SERIAL_SENDER_PORT" ]; then
-    pkill -9 -f "/home/nyu/Codespace/nyush-rm-vision/serial_sender.py --port $SERIAL_SENDER_PORT" 2>/dev/null || true
+    pkill -9 -f "$SERIAL_SENDER_SCRIPT --port $SERIAL_SENDER_PORT" 2>/dev/null || true
 fi
 sleep 2
 
@@ -332,7 +333,7 @@ if [ "$START_SERIAL_SENDER" = "1" ]; then
         exit 1
     fi
     echo ">>> [7/8] Starting serial_sender..."
-    python3 /home/nyu/Codespace/nyush-rm-vision/serial_sender.py \
+    python3 "$SERIAL_SENDER_SCRIPT" \
         --port "$SERIAL_SENDER_PORT" \
         --ros2 \
         --topic "$SERIAL_SENDER_TOPIC" &
