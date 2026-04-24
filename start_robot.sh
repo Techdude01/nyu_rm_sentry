@@ -6,8 +6,8 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$SCRIPT_DIR"
-NAV_WS_ROOT="${NAV_WS_ROOT:-$HOME/nav_ws}"
-SERIAL_SENDER_SCRIPT="${SERIAL_SENDER_SCRIPT:-$HOME/Codespace/nyush-rm-vision/serial_sender.py}"
+NAV_WS_ROOT="${NAV_WS_ROOT:-$SENTRY_ROOT}"
+SERIAL_SENDER_SCRIPT="${SERIAL_SENDER_SCRIPT:-}"
 RM_VISION_WS_ROOT="${RM_VISION_WS_ROOT:-$SENTRY_ROOT/rm_vision_ws}"
 RM_DECISION_WS_ROOT="${RM_DECISION_WS_ROOT:-$SENTRY_ROOT/rm_decision_ws}"
 BT_STYLE="${BT_STYLE:-center_attack_simple}"
@@ -21,7 +21,7 @@ RADAR_PTY="${RADAR_PTY:-}"
 SERIAL_SENDER_TOPIC="${SERIAL_SENDER_TOPIC:-/cmd_vel_chassis_bt}"
 SERIAL_SENDER_PORT="${SERIAL_SENDER_PORT:-$RADAR_PTY}"
 MAP_FILE="${MAP_FILE:-$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml}"
-NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-$HOME/nav_ws/my_nav2_params.yaml}"
+NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-$SENTRY_ROOT/my_nav2_params.yaml}"
 PUBLISH_NAV2_INITIAL_POSE="${PUBLISH_NAV2_INITIAL_POSE:-1}"
 NAV2_INITIAL_POSE_X="${NAV2_INITIAL_POSE_X:-0.8}"
 NAV2_INITIAL_POSE_Y="${NAV2_INITIAL_POSE_Y:-7.8}"
@@ -33,7 +33,7 @@ RVIZ_STARTED="${RVIZ_STARTED:-0}"
 MAP_BASENAME="$(basename "${MAP_FILE%.yaml}")"
 MAP_DIR="$(dirname "$MAP_FILE")"
 MAP_ROOT_DIR="$(dirname "$MAP_DIR")"
-ICP_CONFIG_FILE="${ICP_CONFIG_FILE:-$NAV_WS_ROOT/src/pb_rm_simulation/src/rm_nav_bringup/config/reality/icp_registration_real.yaml}"
+ICP_CONFIG_FILE="${ICP_CONFIG_FILE:-$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/config/reality/icp_registration_real.yaml}"
 ICP_PCD_FILE="${ICP_PCD_FILE:-$MAP_ROOT_DIR/PCD/${MAP_BASENAME}.pcd}"
 if [ ! -f "$ICP_PCD_FILE" ]; then
     ALT_ICP_PCD_FILE="$NAV_WS_ROOT/src/pb_rm_simulation/src/rm_nav_bringup/PCD/${MAP_BASENAME}.pcd"
@@ -59,6 +59,37 @@ ICP_ODOM_FRAME_ID="${ICP_ODOM_FRAME_ID:-odom}"
 ICP_MAP_OFFSET_X="${ICP_MAP_OFFSET_X:-}"
 ICP_MAP_OFFSET_Y="${ICP_MAP_OFFSET_Y:-}"
 ICP_MAP_OFFSET_Z="${ICP_MAP_OFFSET_Z:-0.0}"
+SET_SERIAL_PERMS="${SET_SERIAL_PERMS:-0}"
+
+source_setup_if_exists() {
+    local setup_file="$1"
+    local label="$2"
+    if [ -f "$setup_file" ]; then
+        # shellcheck disable=SC1090
+        source "$setup_file"
+    else
+        echo ">>> Warning: $label setup not found: $setup_file"
+    fi
+}
+
+resolve_serial_sender_script() {
+    if [ -n "$SERIAL_SENDER_SCRIPT" ] && [ -f "$SERIAL_SENDER_SCRIPT" ]; then
+        return
+    fi
+
+    local candidates=(
+        "$SENTRY_ROOT/../nyush-rm-vision/serial_sender.py"
+        "$HOME/Projects/nyush-rm-vision/serial_sender.py"
+        "$HOME/Codespace/nyush-rm-vision/serial_sender.py"
+    )
+    local candidate
+    for candidate in "${candidates[@]}"; do
+        if [ -f "$candidate" ]; then
+            SERIAL_SENDER_SCRIPT="$candidate"
+            return
+        fi
+    done
+}
 
 configure_libusb_preload() {
     local detected_path=""
@@ -223,10 +254,11 @@ apply_agx_desktop_overrides() {
 }
 
 source /opt/ros/humble/setup.bash
-source "$NAV_WS_ROOT/install/setup.bash"
-source "$RM_VISION_WS_ROOT/install/setup.bash"
-source "$RM_DECISION_WS_ROOT/install/setup.bash"
+source_setup_if_exists "$NAV_WS_ROOT/install/setup.bash" "navigation workspace"
+source_setup_if_exists "$RM_VISION_WS_ROOT/install/setup.bash" "vision workspace"
+source_setup_if_exists "$RM_DECISION_WS_ROOT/install/setup.bash" "decision workspace"
 apply_agx_desktop_overrides
+resolve_serial_sender_script
 
 if [ -z "$RVIZ_CONFIG" ]; then
     RVIZ_CONFIG="$(ros2 pkg prefix nav2_bringup 2>/dev/null || true)/share/nav2_bringup/rviz/nav2_default_view.rviz"
@@ -286,9 +318,12 @@ if [ "$START_SERIAL_SENDER" = "1" ]; then
     echo "   SERIAL_SENDER_SCRIPT=$SERIAL_SENDER_SCRIPT"
 fi
 
-echo ">>> [2/11] Serial permissions (if this hangs, enter your password)..."
-if [ -e /dev/ttyACM0 ]; then
+echo ">>> [2/11] Serial permissions..."
+if [ -e /dev/ttyACM0 ] && [ "$SET_SERIAL_PERMS" = "1" ]; then
+    echo "    SET_SERIAL_PERMS=1, attempting chmod on /dev/ttyACM0"
     sudo chmod 777 /dev/ttyACM0
+elif [ -e /dev/ttyACM0 ]; then
+    echo "    Skipping chmod for /dev/ttyACM0 (set SET_SERIAL_PERMS=1 to opt in)"
 else
     echo "Warning: /dev/ttyACM0 not found, skipping permission setup"
 fi

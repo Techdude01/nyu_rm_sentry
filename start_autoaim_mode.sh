@@ -4,7 +4,7 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$SCRIPT_DIR"
-VISION_ROOT="${VISION_ROOT:-$HOME/Codespace/nyush-rm-vision}"
+VISION_ROOT="${VISION_ROOT:-}"
 ROS_SETUP="${ROS_SETUP:-/opt/ros/humble/setup.bash}"
 DECISION_SETUP="${DECISION_SETUP:-$SENTRY_ROOT/rm_decision_ws/install/setup.bash}"
 PLANNER_SETUP="${PLANNER_SETUP:-$SENTRY_ROOT/install/setup.bash}"
@@ -31,6 +31,25 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+resolve_vision_root() {
+    if [ -n "$VISION_ROOT" ] && [ -d "$VISION_ROOT" ]; then
+        return
+    fi
+
+    local candidates=(
+        "$SENTRY_ROOT/../nyush-rm-vision"
+        "$HOME/Projects/nyush-rm-vision"
+        "$HOME/Codespace/nyush-rm-vision"
+    )
+    local candidate
+    for candidate in "${candidates[@]}"; do
+        if [ -d "$candidate" ]; then
+            VISION_ROOT="$candidate"
+            return
+        fi
+    done
+}
+
 if [ ! -f "$ROS_SETUP" ]; then
     echo "❌ ROS setup not found: $ROS_SETUP"
     exit 1
@@ -41,6 +60,7 @@ if [ ! -f "$DECISION_SETUP" ]; then
     exit 1
 fi
 
+resolve_vision_root
 source "$ROS_SETUP"
 source "$DECISION_SETUP"
 if [ -f "$PLANNER_SETUP" ]; then
@@ -196,7 +216,7 @@ if [ "$REQUIRE_ROBOT_CONTROL_SUBSCRIBER" = "1" ] && [ "$robot_control_subscriber
 fi
 
 if [ "$START_VISION" = "1" ]; then
-    if [ ! -d "$VISION_ROOT" ]; then
+    if [ -z "$VISION_ROOT" ] || [ ! -d "$VISION_ROOT" ]; then
         echo "❌ Vision repo not found: $VISION_ROOT"
         exit 1
     fi

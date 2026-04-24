@@ -109,149 +109,44 @@ controller_server:
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 6.28
     FollowPath:
-      plugin: teb_local_planner::TebLocalPlannerROS
-      # https://github.com/rst-tu-dortmund/teb_local_planner/tree/ros2-master
-
-      #*******************************************************************************
-      # Trajectory
-      #*******************************************************************************
-      teb_autosize: 1.0                             # If true, resize trajectory based on time resolution
-      dt_ref: 0.6                                   # Desired temporal resolution of trajectory (same order of magnitude as control rate)
-      dt_hysteresis: 0.06                           # Hysteresis for auto-resize, usually ~10% of dt_ref
-      max_samples: 500                              # Max samples; if too small, discretization may be insufficient or avoidance may fail
-      global_plan_overwrite_orientation: False       # Overwrite sub-goal orientations from global plan
-      allow_init_with_backwards_motion: True        # Allow initializing with backward motion if goal is behind in local costmap
-      max_global_plan_lookahead_dist: 1.2           # Max length of global-plan subset for optimization; <=0 disables
-      force_reinit_new_goal_dist: 1.0               # Reinit if goal moved farther than this
-      force_reinit_new_goal_angular: 0.78           # Reinit if goal angular change exceeds this (rad)
-      feasibility_check_no_poses: 0                 # Poses to check for feasibility per interval
-      feasibility_check_lookahead_distance: 1.5     # Lookahead for feasibility; -1 checks all poses up to feasibility_check_no_poses
-      exact_arc_length: False                       # Use true arc length in vel/acc/turn rate (more CPU) vs Euclidean
-      publish_feedback: False                       # Publish full trajectory and dynamic obstacles (debug/eval)
-      visualize_with_time_as_z_axis_scale: 0.0      # Rviz: show optimization graph with time on Z
-
-      #*******************************************************************************
-      # ViaPoints
-      #*******************************************************************************
-      global_plan_viapoint_sep: 0.5         # Min distance between via points from global plan
-      via_points_ordered: False             # Follow stored order of via points
-
-      #*******************************************************************************
-      # Robot
-      #*******************************************************************************
-      max_vel_x: 2.0                        # Max forward speed
-      max_vel_x_backwards: 2.0              # Max reverse speed
-      max_vel_theta: 3.0                   # Max yaw rate
-      acc_lim_x: 4.5                        # Max linear acceleration
-      acc_lim_theta: 3.0                   # Max angular acceleration
-      is_footprint_dynamic: False           # Update footprint before checking feasibility
-      use_proportional_saturation: False    # If true, scale all twist components proportionally when any exceeds limit
-      transform_tolerance: 0.5              # TF query tolerance (s)
-
-      #*******************************************************************************
-      # Robot/Carlike (car-like / diff-drive; not used for omni)
-      #*******************************************************************************
-      # min_turning_radius: 0.0             # Min turning radius; 0 for diff-drive
-      # wheelbase: 1.0                      # Drive to steer axle distance; may be negative for RWD
-      # cmd_angle_instead_rotvel: False     # Use steer angle instead of z angular velocity in cmd (needs wheelbase)
-
-      #*******************************************************************************
-      # Robot/Omni
-      #*******************************************************************************
+      plugin: "dwb_core::DWBLocalPlanner"
+      debug_trajectory_details: False
+      min_vel_x: -1.0
+      min_vel_y: -1.0
+      max_vel_x: 2.0
       max_vel_y: 2.0
+      max_vel_theta: 3.0
+      min_speed_xy: 0.0
+      max_speed_xy: 2.5
+      min_speed_theta: 0.0
+      acc_lim_x: 4.5
       acc_lim_y: 4.0
-
-      #*******************************************************************************
-      # GoalTolerance
-      #*******************************************************************************
-      free_goal_vel: False      # If false, target velocity at goal is zero; if true, may arrive at max speed
-
-      #*******************************************************************************
-      # Obstacles
-      #*******************************************************************************
-      min_obstacle_dist: 0.25                     # Min desired clearance to static obstacles
-      inflation_dist: 0.6                         # Buffer around obstacles with cost (nonzero penalty in this band)
-      dynamic_obstacle_inflation_dist: 0.7        # Buffer around predicted dynamic obstacle (must be > min_obstacle_dist to matter)
-      include_dynamic_obstacles: True             # Inflate around predicted dynamic obstacles
-      include_costmap_obstacles: True             # Use obstacles from costmap directly
-      legacy_obstacle_association: False          # Old: nearest TEB pose per obstacle; new: relevant obstacles per TEB pose
-      costmap_obstacles_behind_robot_dist: 1.5    # Max distance (m) behind robot for costmap obstacles
-      obstacle_poses_affected: 15                 # Attach obstacles to nearest pose; consider this many neighbors
-
-      # costmap_converter_plugin: "costmap_converter::CostmapToPolygonsDBSMCCH"
-      # costmap_converter_spin_thread: True
-      # costmap_converter_rate: 10
-
-      #*******************************************************************************
-      # Obstacle - Velocity ratio
-      #*******************************************************************************
-      obstacle_proximity_ratio_max_vel: 1.0     # Upper ratio when slowing near static obstacles
-      obstacle_proximity_lower_bound: 0.0       # Distance (m) below which speed reduction starts
-      obstacle_proximity_upper_bound: 0.5       # Distance (m) above which keep higher speed
-
-      #*******************************************************************************
-      # Optimization
-      #*******************************************************************************
-      no_inner_iterations: 5         # Inner solver iterations per outer step
-      no_outer_iterations: 4         # Outer loop resizes trajectory and calls inner optimization
-      optimization_activate: True    # Enable optimization
-      optimization_verbose: False    # Verbose optimization logs
-      penalty_epsilon: 0.15          # Small slack for hard constraints in penalty
-
-      # Weights
-      obstacle_cost_exponent: 4.0
-      weight_max_vel_x: 2.0                   # Weight to satisfy max linear x
-      weight_max_vel_y: 2.0                   # Weight to satisfy max lateral y (omni)
-      weight_max_vel_theta: 1.0               # Weight to satisfy max angular velocity
-      weight_acc_lim_x: 1.0                   # Weight to satisfy max linear x acceleration
-      weight_acc_lim_y: 1.0                   # Weight to satisfy max lateral y acceleration (omni)
-      weight_acc_lim_theta: 1.0               # Weight to satisfy max angular acceleration
-      weight_kinematics_nh: 0.0               # Non-holonomic constraint weight
-      weight_kinematics_forward_drive: 0.0    # Forward-only weight (diff-drive)
-      weight_kinematics_turning_radius: 0.1   # Min turning radius (car-like)
-      weight_optimaltime: 0.1                 # Time-optimality
-      weight_shortest_path: 0.0               # Prefer shorter path (may be less smooth)
-      weight_obstacle: 100.0                  # Min distance to obstacles
-      weight_inflation: 0.2                   # Avoid inflation zone (keep small)
-      weight_dynamic_obstacle: 10.0           # Min distance to dynamic obstacles
-      weight_dynamic_obstacle_inflation: 0.2  # Avoid dynamic inflation (keep small)
-      weight_viapoint: 1.0                    # Some weights (e.g. weight_obstacle) are scaled by this per outer iter
-      weight_adapt_factor: 2.0                # Exponent for nonlinear obstacle cost; 1 disables
-
-      #*******************************************************************************
-      # Homotopy Class Planner
-      #*******************************************************************************
-      enable_homotopy_class_planning: False
-      enable_multithreading: True            # Multithread multiple homotopy classes
-      max_number_classes: 3                  # Max alternative topologies (increases cost)
-      selection_cost_hysteresis: 1.0
-      selection_prefer_initial_plan: 1.0
-      selection_obst_cost_scale: 1.0
-      selection_alternative_time_cost: True
-
-      roadmap_graph_no_samples: 15          # Samples for roadmap
-      roadmap_graph_area_width: 5.0         # Region width
-      roadmap_graph_area_length_scale: 1.0  # Scale length from start-goal distance; center fixed
-      h_signature_prescaler: 0.5            # (0.2 < value <= 1) scale for homotopy signature
-      h_signature_threshold: 0.1            # Consider two h-signatures equal if below threshold
-      obstacle_heading_threshold: 0.45      # Norm dot product threshold obstacle vs goal heading
-      switching_blocking_period: 0.0        # Min duration before switching homotopy class
-      viapoints_all_candidates: True        # If true, attach all topology variants to via set
-      delete_detours_backwards: True
-      max_ratio_detours_duration_best_duration: 3.0
-      visualize_hc_graph: False             # Visualize homotopy exploration graph
-
-      #*******************************************************************************
-      # Recovery
-      #*******************************************************************************
-      # If infeasible, shrink planning horizon: replan to nearer point
-      shrink_horizon_backup: True
-      shrink_horizon_min_duration: 10.0         # Min duration for shrink-horizon fallback after infeasible
-      oscillation_recovery: True                # Detect and recover from oscillation
-      oscillation_v_eps: 0.1                    # Threshold on normalized mean |v| in (0,1)
-      oscillation_omega_eps: 0.1                # Threshold on normalized mean |omega| in (0,1)
-      oscillation_recovery_min_duration: 10.0   # Window to re-detect oscillation
-      oscillation_filter_duration: 10.0         # failure_detector_ buffer = this * controller_frequency
+      acc_lim_theta: 3.0
+      decel_lim_x: -4.5
+      decel_lim_y: -4.0
+      decel_lim_theta: -3.0
+      vx_samples: 20
+      vy_samples: 20
+      vtheta_samples: 20
+      sim_time: 0.8
+      linear_granularity: 0.05
+      angular_granularity: 0.025
+      transform_tolerance: 0.5
+      xy_goal_tolerance: 0.25
+      trans_stopped_velocity: 0.1
+      short_circuit_trajectory_evaluation: True
+      stateful: True
+      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      BaseObstacle.scale: 0.02
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.1
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
 
 local_costmap:
   local_costmap:
@@ -313,51 +208,22 @@ global_costmap:
       robot_radius: 0.2
       resolution: 0.04
       track_unknown_space: true
-      plugins: ["static_layer", "stvl_layer", "inflation_layer"]
-      stvl_layer:
-        plugin: "spatio_temporal_voxel_layer/SpatioTemporalVoxelLayer"
-        # https://github.com/SteveMacenski/spatio_temporal_voxel_layer
-        enabled:                  true
-        voxel_decay:              15.0                              # If linear: seconds; if exponential: e^n scale
-        decay_model:              0                                 # 0=linear, 1=exponential, -1=persistent
-        voxel_size:               0.05                              # Voxel size (m)
-        track_unknown_space:      true                              # default space is unknown
-        mark_threshold:           0                                 # voxel height
-        update_footprint_enabled: true
-        combination_method:       1                                 # 1=max, 0=override
-        origin_z:                 0.0                               # meters
-        publish_voxel_map:        false                              # Publishes voxel map if true
-        transform_tolerance:      0.2                               # seconds
-        mapping_mode:             false                             # default off, saves map not for navigation
-        map_save_duration:        60.0                              # default 60s, how often to autosave
-        observation_sources:      livox_mark livox_clear
-        livox_mark:
-          data_type: PointCloud2
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: livox
+        livox:
           topic: /segmentation/obstacle
-          marking: true
-          clearing: false
-          obstacle_range: 3.0                                       # Obstacle range (m)
-          min_obstacle_height: 0.2                                  # Min obstacle height (m)
-          max_obstacle_height: 2.0                                  # Max obstacle height (m)
-          expected_update_rate: 0.0                                 # default 0, if not updating at this rate at least, remove from buffer
-          observation_persistence: 0.0                              # default 0, use all measurements taken during now-value, 0=latest
-          inf_is_valid: false                                       # default false, for laser scans
-          filter: "voxel"                                           # default passthrough, apply "voxel", "passthrough", or no filter to sensor data, recommend on
-          voxel_min_points: 0                                       # default 0, minimum points per voxel for voxel filter
-          clear_after_reading: true                                 # default false, clear the buffer after the layer gets readings from it
-        livox_clear:
-          enabled: true                                             # default true, can be toggled on/off with associated service call
-          data_type: PointCloud2
-          topic: /segmentation/obstacle
-          marking: false
-          clearing: true
-          max_z: 8.0                                                # Max Z (m)
-          min_z: 1.0                                                # Min Z (m)
-          vertical_fov_angle: 1.029                                 # Vertical FOV (rad). For 3D lidars: symmetric about planar axis.
-          vertical_fov_padding: 0.05                                # 3D Lidar only. Default 0, in meters
-          horizontal_fov_angle: 6.29                                # Horizontal FOV for 3D lidar (rad)
-          decay_acceleration: 5.0                                   # default 0, 1/s^2.
-          model_type: 1                                             # 0=depth camera, 1=3D lidar
+          data_type: "PointCloud2"
+          clearing: True
+          marking: True
+          obstacle_max_range: 10.0
+          obstacle_min_range: 0.0
+          raytrace_max_range: 20.0
+          raytrace_min_range: 0.0
+          min_obstacle_height: 0.0
+          max_obstacle_height: 2.0
 
 map_saver:
   ros__parameters:

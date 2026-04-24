@@ -9,7 +9,7 @@ SENTRY_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Map path (edit for your setup)
 # Default: project RMUL arena map (university league field)
 MAP_YAML="${MAP_YAML:-$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL.yaml}"
-NAV_PARAMS="${NAV_PARAMS:-$HOME/nav_ws/my_nav2_params.yaml}"
+NAV_PARAMS="${NAV_PARAMS:-$SENTRY_ROOT/my_nav2_params.yaml}"
 
 echo "=========================================="
 echo "  No-LiDAR test — Nav2 + decision"
@@ -31,7 +31,7 @@ echo "  python3 $SCRIPT_DIR/fake_sensors_for_test.py"
 echo ""
 echo "[Terminal 2] Map server + Nav2:"
 echo "  source /opt/ros/humble/setup.bash"
-echo "  source ~/nav_ws/install/setup.bash"
+echo "  source $SENTRY_ROOT/install/setup.bash   # if built in this repo"
 echo "  ros2 launch nav2_bringup bringup_launch.py \\"
 echo "    use_sim_time:=False \\"
 echo "    map:=$MAP_YAML \\"

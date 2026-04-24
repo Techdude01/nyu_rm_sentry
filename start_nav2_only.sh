@@ -4,22 +4,22 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$SCRIPT_DIR"
-NAV_WS_ROOT="${NAV_WS_ROOT:-$HOME/nav_ws}"
-SERIAL_SENDER_SCRIPT="${SERIAL_SENDER_SCRIPT:-$HOME/Codespace/nyush-rm-vision/serial_sender.py}"
+NAV_WS_ROOT="${NAV_WS_ROOT:-$SENTRY_ROOT}"
+SERIAL_SENDER_SCRIPT="${SERIAL_SENDER_SCRIPT:-}"
 RM_VISION_WS_ROOT="${RM_VISION_WS_ROOT:-$SENTRY_ROOT/rm_vision_ws}"
 USE_SIM_TIME="${USE_SIM_TIME:-False}"
 ENABLE_RVIZ="${ENABLE_RVIZ:-1}"
 RVIZ_CONFIG="${RVIZ_CONFIG:-}"
 RESET_FASTRTPS_SHM="${RESET_FASTRTPS_SHM:-0}"
 MAP_FILE="${MAP_FILE:-$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml}"
-NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-$HOME/nav_ws/my_nav2_params.yaml}"
+NAV2_PARAMS_FILE="${NAV2_PARAMS_FILE:-$SENTRY_ROOT/my_nav2_params.yaml}"
 PUBLISH_NAV2_INITIAL_POSE="${PUBLISH_NAV2_INITIAL_POSE:-0}"
 NAV2_INITIAL_POSE_X="${NAV2_INITIAL_POSE_X:-0.8}"
 NAV2_INITIAL_POSE_Y="${NAV2_INITIAL_POSE_Y:-7.8}"
 NAV2_INITIAL_POSE_YAW="${NAV2_INITIAL_POSE_YAW:-0.0}"
 WAIT_MANUAL_INITIAL_POSE="${WAIT_MANUAL_INITIAL_POSE:-1}"
 WAIT_MANUAL_INITIAL_POSE_TIMEOUT="${WAIT_MANUAL_INITIAL_POSE_TIMEOUT:-600}"
-START_SERIAL_SENDER="${START_SERIAL_SENDER:-1}"
+START_SERIAL_SENDER="${START_SERIAL_SENDER:-0}"
 RADAR_PTY="${RADAR_PTY:-}"
 SERIAL_SENDER_PORT="${SERIAL_SENDER_PORT:-$RADAR_PTY}"
 SERIAL_SENDER_TOPIC="${SERIAL_SENDER_TOPIC:-/cmd_vel_chassis}"
@@ -39,6 +39,36 @@ LIDAR_SCAN_PARENT_FRAME="${LIDAR_SCAN_PARENT_FRAME:-body}"
 LIDAR_SCAN_YAW="${LIDAR_SCAN_YAW:-0.0}"
 LIDAR_SCAN_PITCH="${LIDAR_SCAN_PITCH:--0.873}"
 LIDAR_SCAN_ROLL="${LIDAR_SCAN_ROLL:-0.0}"
+
+source_setup_if_exists() {
+    local setup_file="$1"
+    local label="$2"
+    if [ -f "$setup_file" ]; then
+        # shellcheck disable=SC1090
+        source "$setup_file"
+    else
+        echo ">>> Warning: $label setup not found: $setup_file"
+    fi
+}
+
+resolve_serial_sender_script() {
+    if [ -n "$SERIAL_SENDER_SCRIPT" ] && [ -f "$SERIAL_SENDER_SCRIPT" ]; then
+        return
+    fi
+
+    local candidates=(
+        "$SENTRY_ROOT/../nyush-rm-vision/serial_sender.py"
+        "$HOME/Projects/nyush-rm-vision/serial_sender.py"
+        "$HOME/Codespace/nyush-rm-vision/serial_sender.py"
+    )
+    local candidate
+    for candidate in "${candidates[@]}"; do
+        if [ -f "$candidate" ]; then
+            SERIAL_SENDER_SCRIPT="$candidate"
+            return
+        fi
+    done
+}
 
 configure_libusb_preload() {
     local detected_path=""
@@ -207,8 +237,9 @@ PYWAITPOSE
 }
 
 source /opt/ros/humble/setup.bash
-source "$NAV_WS_ROOT/install/setup.bash"
-source "$RM_VISION_WS_ROOT/install/setup.bash"
+source_setup_if_exists "$NAV_WS_ROOT/install/setup.bash" "navigation workspace"
+source_setup_if_exists "$RM_VISION_WS_ROOT/install/setup.bash" "vision workspace"
+resolve_serial_sender_script
 
 if [ -z "$RVIZ_CONFIG" ]; then
     RVIZ_CONFIG="$(ros2 pkg prefix nav2_bringup 2>/dev/null || true)/share/nav2_bringup/rviz/nav2_default_view.rviz"

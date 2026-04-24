@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_PLANNER_ROOT="${SENTRY_PLANNER_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
-NYUSH_VISION_ROOT="${NYUSH_VISION_ROOT:-$HOME/Codespace/nyush-rm-vision}"
+NYUSH_VISION_ROOT="${NYUSH_VISION_ROOT:-}"
 
 LOG_DIR="$SENTRY_PLANNER_ROOT/logs/autostart"
 mkdir -p "$LOG_DIR"
@@ -44,9 +44,38 @@ wait_for_vision_link() {
   done
 }
 
+resolve_vision_root() {
+  if [ -n "$NYUSH_VISION_ROOT" ] && [ -d "$NYUSH_VISION_ROOT" ]; then
+    return
+  fi
+
+  local candidates=(
+    "$SENTRY_PLANNER_ROOT/../nyush-rm-vision"
+    "$HOME/Projects/nyush-rm-vision"
+    "$HOME/Codespace/nyush-rm-vision"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [ -d "$candidate" ]; then
+      NYUSH_VISION_ROOT="$candidate"
+      return
+    fi
+  done
+}
+
+restart_bridge_service() {
+  if systemctl --user status sentry_bridge.service >/dev/null 2>&1; then
+    echo "[autostart] Restarting sentry_bridge.service..."
+    systemctl --user restart sentry_bridge.service
+  else
+    echo "[autostart] Warning: sentry_bridge.service is unavailable; skipping restart."
+  fi
+}
+
+resolve_vision_root
+
 if command -v xterm >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ] && [ -f "${XAUTHORITY:-$HOME/.Xauthority}" ]; then
-  echo "[autostart] Restarting sentry_bridge.service..."
-  systemctl --user restart sentry_bridge.service
+  restart_bridge_service
 
   wait_for_vision_link
 
@@ -64,8 +93,7 @@ AUTOAIM_CHASSIS_SPIN_VEL=$AUTOAIM_CHASSIS_SPIN_VEL \
 ./start_autoaim_mode.sh; read -r -p 'Press Enter to close...'" &
 else
   echo "[autostart] xterm not found; falling back to background logs."
-  echo "[autostart] Restarting sentry_bridge.service..."
-  systemctl --user restart sentry_bridge.service
+  restart_bridge_service
 
   wait_for_vision_link
 

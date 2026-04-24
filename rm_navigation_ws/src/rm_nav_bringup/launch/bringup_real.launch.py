@@ -51,12 +51,12 @@ def generate_launch_description():
     ################################### slam_toolbox parameters end ###################################
 
     ################################### navigation2 parameters start ##################################
-    nav2_map_dir = PathJoinSubstitution([rm_nav_bringup_dir, 'map', world]), ".yaml"
+    nav2_map_dir = [PathJoinSubstitution([rm_nav_bringup_dir, 'map', world]), ".yaml"]
     nav2_params_file_dir = os.path.join(rm_nav_bringup_dir, 'config', 'reality', 'nav2_params_real.yaml')
     ################################### navigation2 parameters end ####################################
 
     ################################ icp_registration parameters start ################################
-    icp_pcd_dir = PathJoinSubstitution([rm_nav_bringup_dir, 'PCD', world]), ".pcd"
+    icp_pcd_dir = [PathJoinSubstitution([rm_nav_bringup_dir, 'PCD', world]), ".pcd"]
     icp_registration_params_dir = os.path.join(rm_nav_bringup_dir, 'config', 'simulation', 'icp_registration_sim.yaml')
     ################################# icp_registration parameters end #################################
 
@@ -108,7 +108,7 @@ def generate_launch_description():
 
     declare_world_cmd = DeclareLaunchArgument(
         'world',
-        default_value='328',
+        default_value='RMUL2026',
         description='Select world (map file, pcd file, world file share the same name prefix as the this parameter)')
 
     declare_mode_cmd = DeclareLaunchArgument(

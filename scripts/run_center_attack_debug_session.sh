@@ -23,8 +23,8 @@ if [ ! -w "$HOME/.ros/log" ] 2>/dev/null; then
 fi
 
 source /opt/ros/humble/setup.bash
-source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash"
-source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash"
+[ -f "$SENTRY_ROOT/rm_vision_ws/install/setup.bash" ] && source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash"
+[ -f "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" ] && source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash"
 
 echo ">>> Cleaning stale debug processes..."
 pkill -f "$SENTRY_ROOT/scripts/watch_center_attack_state.py" 2>/dev/null || true

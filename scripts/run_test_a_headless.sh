@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SENTRY_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Fixed RMUL map; MAP_YAML env is not read
 MAP_YAML="$SENTRY_ROOT/rm_navigation_ws/src/rm_nav_bringup/map/RMUL.yaml"
-NAV_PARAMS="${NAV_PARAMS:-$HOME/nav_ws/my_nav2_params.yaml}"
+NAV_PARAMS="${NAV_PARAMS:-$SENTRY_ROOT/my_nav2_params.yaml}"
 ROS_LOG_DIR="${ROS_LOG_DIR:-}"
 BT_STYLE="${BT_STYLE:-center_attack_simple}"
 
@@ -45,7 +45,7 @@ sleep 2
 echo ">>> [2/5] Starting Nav2..."
 (cd /tmp && unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH && \
  source /opt/ros/humble/setup.bash && \
- source ~/nav_ws/install/setup.bash && \
+ [ -f "$SENTRY_ROOT/install/setup.bash" ] && source "$SENTRY_ROOT/install/setup.bash"; \
  ros2 launch nav2_bringup bringup_launch.py \
    use_sim_time:=False map:="$MAP_YAML" params_file:="$NAV_PARAMS") &
 sleep 8
@@ -53,16 +53,16 @@ sleep 8
 echo ">>> [3/5] Starting behavior-tree comm adapter..."
 (cd /tmp && unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH && \
  source /opt/ros/humble/setup.bash && \
- source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash" 2>/dev/null; \
- source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" && \
+ [ -f "$SENTRY_ROOT/rm_vision_ws/install/setup.bash" ] && source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash"; \
+ [ -f "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" ] && source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash"; \
  python3 "$SENTRY_ROOT/scripts/bt_comm_adapter.py") &
 sleep 2
 
 echo ">>> [4/5] Starting decision behavior tree..."
 (cd /tmp && unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH && \
  source /opt/ros/humble/setup.bash && \
- source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash" 2>/dev/null; \
- source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" && \
+ [ -f "$SENTRY_ROOT/rm_vision_ws/install/setup.bash" ] && source "$SENTRY_ROOT/rm_vision_ws/install/setup.bash"; \
+ [ -f "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" ] && source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash"; \
  ros2 launch rm_behavior_tree rm_behavior_tree.launch.py \
    style:="$BT_STYLE" use_sim_time:=False) &
 sleep 3
@@ -70,7 +70,7 @@ sleep 3
 echo ">>> [5/5] Publishing game_status..."
 (cd /tmp && unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH && \
  source /opt/ros/humble/setup.bash && \
- source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" 2>/dev/null; \
+ [ -f "$SENTRY_ROOT/rm_decision_ws/install/setup.bash" ] && source "$SENTRY_ROOT/rm_decision_ws/install/setup.bash"; \
  ros2 topic pub -r 1 /game_status rm_decision_interfaces/msg/GameStatus \
   '{game_progress: 4, stage_remain_time: 180}') &
 sleep 1
