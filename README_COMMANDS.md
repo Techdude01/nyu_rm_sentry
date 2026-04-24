@@ -253,16 +253,16 @@ START_FAKE_VEL_TRANSFORM=1 \
 | `**MAP_FILE**`                         | Nav2 `map_server` **map yaml** (references **pgm**). Lab map `**11_map`**; field `**RMUL2026.yaml`**. See **§4.4**.                                                                                   |
 | `**BT_STYLE`**                         | Behavior XML **without `.xml`**. `center_attack_fullstack` = full stack; `center_attack_simple` = simple (common default in `sentry_planner/start_robot.sh`).                                         |
 | `**BT_START_GOAL` / `BT_END_GOAL**`    | Passed to `rm_behavior_tree` as `**start_goal_pose` / `end_goal_pose**` on the blackboard; format `x;y;z; qx;qy;qz;qw`. After a map swap, reconcile with hard-coded `**SendGoal**` in XML (**§4.4**). |
-| `**START_SERIAL_SENDER=1`**            | Starts `**serial_sender.py --ros2`** in the background; writes ROS velocity and control to `**RADAR_PTY**`.                                                                                           |
-| `**RADAR_PTY**`                        | **Must match** the current bridge Radar side (prefer `/tmp/nyush-rm-sentry-radar`). Script maps this to `SERIAL_SENDER_PORT`.                                                                         |
-| `**START_BT=1`**                       | Starts `**bt_comm_adapter.py`** + `**rm_behavior_tree**`. Forces `**SERIAL_SENDER_TOPIC` to `/cmd_vel_chassis_bt**` (if it was `/cmd_vel_chassis`) so BT `chassis_spin_vel` merges correctly.         |
+| `**START_SERIAL_SENDER=1`**            | Starts `**serial_sender.py --ros2`** in the background; writes ROS velocity and control to `**RADAR_PTY`**.                                                                                           |
+| `**RADAR_PTY`**                        | **Must match** the current bridge Radar side (prefer `/tmp/nyush-rm-sentry-radar`). Script maps this to `SERIAL_SENDER_PORT`.                                                                         |
+| `**START_BT=1`**                       | Starts `**bt_comm_adapter.py`** + `**rm_behavior_tree`**. Forces `**SERIAL_SENDER_TOPIC` to `/cmd_vel_chassis_bt`** (if it was `/cmd_vel_chassis`) so BT `chassis_spin_vel` merges correctly.         |
 | `**SERIAL_SENDER_DISABLE_STATUS_PUB**` | Passed to sender as `**--disable-status-pub**`: `0` = **publish** `/game_status`, `/robot_status` (from 0x5C/0x5D); `1` = do not publish (avoid fighting hotkey or other mock referee).               |
 | `**START_FAKE_VEL_TRANSFORM=1`**       | Starts `**fake_vel_transform`**: `/cmd_vel` → `/cmd_vel_chassis`. Aligns Nav2 with chassis frame / gimbal compensation.                                                                               |
 
 
 ### 4.2 Workspaces sourced inside the script
 
-By default sources `**~/nav_ws/install**`, `**sentry_planner/install**` (if present), `**rm_vision_ws**`, `**rm_decision_ws**` so `rm_behavior_tree`, `fake_vel_transform`, and `serial_sender` message types resolve.
+By default sources `**~/nav_ws/install`**, `**sentry_planner/install`** (if present), `**rm_vision_ws**`, `**rm_decision_ws**` so `rm_behavior_tree`, `fake_vel_transform`, and `serial_sender` message types resolve.
 
 ### 4.3 `nav_ws/start_robot.sh` vs `sentry_planner/start_robot.sh`
 
@@ -298,11 +298,11 @@ NAV2_INITIAL_POSE_YAW=0.0 \
 
 | Scenario              | Typical `MAP_FILE`                                                       | Notes                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Lab / self-mapped** | `$HOME/Desktop/map/11_map.yaml`                                          | After mapping (**§7**), `map_saver_cli -f 11_map` under `**~/Desktop/map/`** yields `**11_map.yaml` + `11_map.pgm`**. Point `**MAP_FILE**` at the yaml. |
+| **Lab / self-mapped** | `$HOME/Desktop/map/11_map.yaml`                                          | After mapping (**§7**), `map_saver_cli -f 11_map` under `**~/Desktop/map/`** yields `**11_map.yaml` + `11_map.pgm`**. Point `**MAP_FILE`** at the yaml. |
 | **RMUL 2026 field**   | `…/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml` | Fixed field layout; `**RMUL2026.pgm`** alongside. Point `**MAP_FILE`** at that yaml.                                                                    |
 
 
-If `**image:**` in yaml is relative, keep **pgm next to yaml**; do not copy yaml alone.
+If `**image:`** in yaml is relative, keep **pgm next to yaml**; do not copy yaml alone.
 
 #### 4.4.2 Roles of `PCD`, `PGM`, `YAML`
 
@@ -412,7 +412,7 @@ ros2 run nav2_map_server map_saver_cli -f 11_map
 ```
 
 - **Purpose**: save current `**/map`** as `**11_map.yaml` + `11_map.pgm`** (`-f` prefix).
-- Point `**MAP_FILE**` at that yaml for `start_robot.sh`.
+- Point `**MAP_FILE`** at that yaml for `start_robot.sh`.
 - **PCD/PGM/YAML roles, field `RMUL2026`, retune BT goals on map change**: **§4.4**.
 
 ### 7.4 Pick coordinates with `map_point_picker.py` (needs GUI / VNC)
@@ -513,8 +513,8 @@ Without a matching arena you can still tune comms and BT—**do not claim “ful
 ### 12.3 `start_robot.sh`, bridge, sender
 
 - `**start_robot.sh` (nav_ws or sentry_planner) does not start `sentry_bridge`** by default; run bridge in **its own terminal** or systemd.
-- To push `**/cmd_vel_chassis_bt`** and `**/robot_control`** to MCU: `**START_SERIAL_SENDER=1 RADAR_PTY=<Radar PTY>**` (same as **§4**).
-- On the current field stack, `**/cmd_vel_chassis_bt`** = Nav2 chassis velocity + `**RobotControl.chassis_spin_vel`** via `**bt_comm_adapter**`, then **sender → Radar PTY → MCU**; `**scan_*`, `allow_vision_control`** on `**/robot_control`** go **A3 → MCU** (wire details [README_COMMUNICATION.md](README_COMMUNICATION.md)).
+- To push `**/cmd_vel_chassis_bt`** and `**/robot_control`** to MCU: `**START_SERIAL_SENDER=1 RADAR_PTY=<Radar PTY>`** (same as **§4**).
+- On the current field stack, `**/cmd_vel_chassis_bt`** = Nav2 chassis velocity + `**RobotControl.chassis_spin_vel`** via `**bt_comm_adapter`**, then sender → Radar PTY → MCU; `**scan_*`, `allow_vision_control`** on `**/robot_control`** go **A3 → MCU** (wire details [README_COMMUNICATION.md](README_COMMUNICATION.md)).
 
 ### 12.4 Suggested manual terminals
 

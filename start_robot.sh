@@ -13,6 +13,7 @@ BT_STYLE="${BT_STYLE:-center_attack_simple}"
 USE_SIM_TIME="${USE_SIM_TIME:-False}"
 ENABLE_RVIZ="${ENABLE_RVIZ:-0}"
 RVIZ_CONFIG="${RVIZ_CONFIG:-}"
+AGX_DESKTOP_MODE="${AGX_DESKTOP_MODE:-0}"
 RESET_FASTRTPS_SHM="${RESET_FASTRTPS_SHM:-0}"
 START_SERIAL_SENDER="${START_SERIAL_SENDER:-0}"
 RADAR_PTY="${RADAR_PTY:-}"
@@ -196,10 +197,18 @@ launch_rviz_background() {
     sleep 2
 }
 
+apply_agx_desktop_overrides() {
+    if [ "$AGX_DESKTOP_MODE" != "1" ]; then
+        return
+    fi
+    ENABLE_RVIZ=1
+}
+
 source /opt/ros/humble/setup.bash
 source "$NAV_WS_ROOT/install/setup.bash"
 source "$RM_VISION_WS_ROOT/install/setup.bash"
 source "$RM_DECISION_WS_ROOT/install/setup.bash"
+apply_agx_desktop_overrides
 
 if [ -z "$RVIZ_CONFIG" ]; then
     RVIZ_CONFIG="$(ros2 pkg prefix nav2_bringup 2>/dev/null || true)/share/nav2_bringup/rviz/nav2_default_view.rviz"
@@ -242,6 +251,7 @@ echo "   BT_STYLE=$BT_STYLE"
 echo "   LOCALIZATION_MODE=$LOCALIZATION_MODE"
 echo "   USE_SIM_TIME=$USE_SIM_TIME"
 echo "   ENABLE_RVIZ=$ENABLE_RVIZ"
+echo "   AGX_DESKTOP_MODE=$AGX_DESKTOP_MODE"
 echo "   LIBUSB_PRELOAD_PATH=${LIBUSB_PRELOAD_PATH:-auto}"
 echo "   WAIT_MANUAL_INITIAL_POSE=$WAIT_MANUAL_INITIAL_POSE"
 if [ "$PUBLISH_NAV2_INITIAL_POSE" = "1" ]; then
