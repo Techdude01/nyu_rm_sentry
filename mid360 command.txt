@@ -6,7 +6,9 @@ NYUSH debug notes (Gazebo Sim2Real + hardware)
 CURRENT DEBUG FLOW
 ==================
 see pointcloud:
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+LIBUSB_MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+[ -n "$LIBUSB_MULTIARCH" ] || case "$(uname -m)" in aarch64|arm64) LIBUSB_MULTIARCH=aarch64-linux-gnu ;; *) LIBUSB_MULTIARCH=x86_64-linux-gnu ;; esac
+export LD_PRELOAD="/lib/$LIBUSB_MULTIARCH/libusb-1.0.so.0"
 cd ~/nav_ws/src/FAST_LIO/PCD/
 pcl_viewer scans.pcd
 
@@ -15,7 +17,9 @@ cd ~/nav_ws/src/FAST_LIO/PCD
 python3 rotate_pcd.py
 
 3d PCD to 2d pgm:
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+LIBUSB_MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+[ -n "$LIBUSB_MULTIARCH" ] || case "$(uname -m)" in aarch64|arm64) LIBUSB_MULTIARCH=aarch64-linux-gnu ;; *) LIBUSB_MULTIARCH=x86_64-linux-gnu ;; esac
+export LD_PRELOAD="/lib/$LIBUSB_MULTIARCH/libusb-1.0.so.0"
 cd ~/nav_ws
 source install/setup.bash
 ros2 launch pcd2pgm pcd2pgm_launch.py

@@ -39,6 +39,44 @@ LIDAR_SCAN_YAW="${LIDAR_SCAN_YAW:-0.0}"
 LIDAR_SCAN_PITCH="${LIDAR_SCAN_PITCH:--0.873}"
 LIDAR_SCAN_ROLL="${LIDAR_SCAN_ROLL:-0.0}"
 
+configure_libusb_preload() {
+    local detected_path=""
+    local multiarch=""
+
+    if [ -n "${LIBUSB_PRELOAD_PATH:-}" ]; then
+        detected_path="$LIBUSB_PRELOAD_PATH"
+    else
+        if command -v dpkg-architecture >/dev/null 2>&1; then
+            multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+        fi
+
+        if [ -n "$multiarch" ] && [ -f "/lib/$multiarch/libusb-1.0.so.0" ]; then
+            detected_path="/lib/$multiarch/libusb-1.0.so.0"
+        else
+            case "$(uname -m)" in
+                x86_64|amd64)
+                    detected_path="/lib/x86_64-linux-gnu/libusb-1.0.so.0"
+                    ;;
+                aarch64|arm64)
+                    detected_path="/lib/aarch64-linux-gnu/libusb-1.0.so.0"
+                    ;;
+            esac
+        fi
+    fi
+
+    if [ -n "$detected_path" ] && [ -f "$detected_path" ]; then
+        export LD_PRELOAD="$detected_path"
+        echo ">>> Using libusb preload: $LD_PRELOAD"
+    else
+        if [ -n "${LIBUSB_PRELOAD_PATH:-}" ]; then
+            echo ">>> Warning: LIBUSB_PRELOAD_PATH does not exist: $LIBUSB_PRELOAD_PATH"
+        else
+            echo ">>> Warning: no libusb preload path found; continuing without LD_PRELOAD."
+        fi
+        unset LD_PRELOAD || true
+    fi
+}
+
 start_scan_bridge() {
     if ! wait_for_tf base_footprint "$LIDAR_SCAN_PARENT_FRAME" 10; then
         echo "Error: base_footprint -> $LIDAR_SCAN_PARENT_FRAME TF did not appear."
@@ -209,6 +247,7 @@ if [ "$START_SERIAL_SENDER" = "1" ]; then
     echo "   SERIAL_SENDER_PORT=$SERIAL_SENDER_PORT"
     echo "   SERIAL_SENDER_TOPIC=$SERIAL_SENDER_TOPIC"
 fi
+echo "   LIBUSB_PRELOAD_PATH=${LIBUSB_PRELOAD_PATH:-auto}"
 
 echo ">>> [3/8] Starting Livox driver..."
 ros2 launch livox_ros_driver2 msg_MID360_launch.py &
@@ -223,7 +262,7 @@ ros2 run tf2_ros static_transform_publisher \
     --x 0 --y 0 --z 0 \
     --yaw "$LIDAR_SCAN_YAW" --pitch "$LIDAR_SCAN_PITCH" --roll "$LIDAR_SCAN_ROLL" \
     --frame-id "$LIDAR_SCAN_PARENT_FRAME" --child-frame-id base_link &
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+configure_libusb_preload
 ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml &
 sleep 5
 

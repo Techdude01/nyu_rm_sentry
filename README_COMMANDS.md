@@ -269,6 +269,28 @@ By default sources `**~/nav_ws/install**`, `**sentry_planner/install**` (if pres
 - `**nav_ws/start_robot.sh**`: main script when **ICP is not** in the loop; Nav2 via **AMCL + bringup_launch**; env vars as above.
 - `**sentry_planner/start_robot.sh`**: longer **Mid360 + Fast-LIO + optional ICP** flow; overlapping names but different defaults (see file header).
 
+### 4.3.1 Jetson Orin 8GB SLAM-only profile
+
+For **Jetson SLAM/navigation only** (vision stays separate), prefer `**sentry_planner/start_nav_clean.sh`** and keep RViz off during normal runs:
+
+```bash
+cd ~/sentry_planner
+ENABLE_RVIZ=0 \
+START_SERIAL_SENDER=0 \
+START_ROBOT_CONTROL_KEEPALIVE=0 \
+WAIT_MANUAL_INITIAL_POSE=0 \
+PUBLISH_NAV2_INITIAL_POSE=1 \
+NAV2_INITIAL_POSE_X=0.8 \
+NAV2_INITIAL_POSE_Y=7.8 \
+NAV2_INITIAL_POSE_YAW=0.0 \
+./start_nav_clean.sh
+```
+
+- Replace the `**NAV2_INITIAL_POSE_*`** values with your map's actual starting pose.
+- If you need MCU output from Jetson, keep `**START_SERIAL_SENDER=1`** and pass `**RADAR_PTY`** or `**SERIAL_SENDER_PORT`**.
+- `**LIBUSB_PRELOAD_PATH`** is optional; both `**start_nav_clean.sh`** and `**start_robot.sh`** now auto-detect the correct `**libusb-1.0.so.0`** path for `x86_64` vs `arm64`.
+- On the 8 GB Jetson, **RViz** and the **full vision + nav + decision stack on one board** are not recommended for normal runs.
+
 ### 4.4 Map sources; where `PCD` / `PGM` / `YAML` matter; map swap and BT goals
 
 #### 4.4.1 Two common maps (path convention)
@@ -369,7 +391,10 @@ python3 rotate_pcd.py
 ### 7.2 PCD to 2D grid (pgm)
 
 ```bash
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+LIBUSB_MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+[ -n "$LIBUSB_MULTIARCH" ] || case "$(uname -m)" in aarch64|arm64) LIBUSB_MULTIARCH=aarch64-linux-gnu ;; *) LIBUSB_MULTIARCH=x86_64-linux-gnu ;; esac
+LIBUSB_PRELOAD_PATH="/lib/$LIBUSB_MULTIARCH/libusb-1.0.so.0"
+[ -f "$LIBUSB_PRELOAD_PATH" ] && export LD_PRELOAD="$LIBUSB_PRELOAD_PATH" || unset LD_PRELOAD
 cd ~/nav_ws
 source install/setup.zsh   # or setup.bash
 ros2 launch pcd2pgm pcd2pgm_launch.py
@@ -377,6 +402,7 @@ ros2 launch pcd2pgm pcd2pgm_launch.py
 
 - **Purpose**: project **3D cloud** to **2D occupancy** for `map_server`.
 - `**LD_PRELOAD`**: mitigates some PCL/Open3D vs **libusb** issues (harmless to keep even without LiDAR plugged).
+- In `**sentry_planner/start_nav_clean.sh`** and `**sentry_planner/start_robot.sh`**, you can override the auto-detected value with `**LIBUSB_PRELOAD_PATH=/full/path/to/libusb-1.0.so.0`** when needed.
 
 ### 7.3 Save Nav2 map
 

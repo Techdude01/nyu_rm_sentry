@@ -55,7 +55,9 @@ ros2 launch rm_nav_bringup bringup_sim.launch.py \
 
 **Workaround**: In sim you can avoid LIO and use slam_toolbox or AMCL. If you must use fastlio, try:
 ```bash
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+LIBUSB_MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+[ -n "$LIBUSB_MULTIARCH" ] || case "$(uname -m)" in aarch64|arm64) LIBUSB_MULTIARCH=aarch64-linux-gnu ;; *) LIBUSB_MULTIARCH=x86_64-linux-gnu ;; esac
+export LD_PRELOAD="/lib/$LIBUSB_MULTIARCH/libusb-1.0.so.0"
 ```
 
 ---

@@ -43,6 +43,35 @@ A base `Dockerfile` is provided; use [Dev Containers](https://containers.dev/) f
 
 > Dev Containers isolate the runtime from the repo (workspace is mounted). The image holds only system setup (e.g. shell, dependencies), not project code. Configure via `devcontainer.json`. Works well with VS Code one-click launch.
 
+Jetson / arm64 note: the provided [dockerfile](dockerfile) is architecture-safe. Native Jetson builds will resolve the `arm64` ROS base automatically; on x86 hosts use `docker build --platform linux/arm64 ...` if you need a Jetson image.
+
+Build locally:
+
+```sh
+docker build -f rm_navigation_ws/dockerfile -t rm-nav:humble .
+```
+
+Run with host networking and device access (recommended for Mid-360 / real robot bring-up):
+
+```sh
+docker run --rm -it \
+  --network host \
+  --privileged \
+  -v /dev:/dev \
+  -v $HOME/.ros:/root/.ros \
+  -v $(pwd):/ros_ws/src/sentry_planner \
+  rm-nav:humble
+```
+
+Inside the container, source ROS and build your mounted workspace as usual:
+
+```sh
+source /opt/ros/humble/setup.bash
+cd /ros_ws
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install
+```
+
 Image: [DockerHub: lihanchen2004/pb_rm_simulation](https://hub.docker.com/repository/docker/lihanchen2004/pb_rm_simulation)
 
 1. Install Docker

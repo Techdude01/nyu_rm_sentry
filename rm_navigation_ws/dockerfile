@@ -1,54 +1,61 @@
-FROM ros:humble-ros-base
+ARG BASE_IMAGE=ros:humble-ros-base
+FROM ${BASE_IMAGE}
 
-# create workspace
-RUN mkdir -p /ros_ws
-WORKDIR /ros_ws/
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
 
-# fishros: one-shot mirror and ROS repo setup
-RUN apt update \
-    && apt install wget python3-yaml -y  \
-    && echo "chooses:\n" > fish_install.yaml \
-    && echo "- {choose: 5, desc: 'One-shot: system apt mirrors (all Ubuntu versions)'}\n" >> fish_install.yaml \
-    && echo "- {choose: 2, desc: Switch mirrors and clean third-party sources}\n" >> fish_install.yaml \
-    && echo "- {choose: 1, desc: Add ROS/ROS2 apt repositories}\n" >> fish_install.yaml \
-    && wget http://fishros.com/install  -O fishros && /bin/bash fishros \
-    && rm -rf /var/lib/apt/lists/*  /tmp/* /var/tmp/*
+# For Jetson native builds Docker will resolve the arm64 image variant.
+# For cross-builds from x86, add: docker build --platform linux/arm64 ...
+WORKDIR /ros_ws
 
-# Initialize rosdepc
-RUN apt-get update && apt-get install python3-pip -y && \
-    pip install rosdepc && \
-    sudo rosdepc init  && \
-    rosdepc update
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    clang \
+    clang-format \
+    clangd \
+    cmake \
+    git \
+    libeigen3-dev \
+    libpcl-dev \
+    libssl-dev \
+    libusb-1.0-0 \
+    libusb-1.0-0-dev \
+    psmisc \
+    python3-colcon-common-extensions \
+    python3-pip \
+    python3-rosdep \
+    python3-vcstool \
+    python3-yaml \
+    ros-humble-laser-geometry \
+    ros-humble-nav2-bringup \
+    ros-humble-navigation2 \
+    ros-humble-pcl-conversions \
+    ros-humble-pcl-ros \
+    ros-humble-pointcloud-to-laserscan \
+    ros-humble-rviz2 \
+    ros-humble-tf2-tools \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Clang
-RUN apt-get -y install clang  && \
-    apt-get -y install clangd  && \
-    apt-get -y install clang-format && \
-    apt-get clean && apt autoclean
+RUN if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then rosdep init; fi \
+    && rosdep update
 
-RUN git clone https://github.com/Livox-SDK/Livox-SDK2.git && \
-    cd ./Livox-SDK2/ && \
-    mkdir build && \
-    cd build && \
-    cmake .. && make -j && \
-    sudo make install
+WORKDIR /tmp
+RUN git clone --depth=1 https://github.com/Livox-SDK/Livox-SDK2.git \
+    && cmake -S Livox-SDK2 -B Livox-SDK2/build \
+    && cmake --build Livox-SDK2/build -j"$(nproc)" \
+    && cmake --install Livox-SDK2/build \
+    && rm -rf Livox-SDK2
 
-# setup zsh
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.2.0/zsh-in-docker.sh)" -- \
-    -t jispwoso -p git \
-    -p https://github.com/zsh-users/zsh-autosuggestions \
-    -p https://github.com/zsh-users/zsh-syntax-highlighting && \
-    chsh -s /bin/zsh && \
-    rm -rf /var/lib/apt/lists/*
+WORKDIR /ros_ws
+RUN printf '%s\n' \
+    'source /opt/ros/humble/setup.bash' \
+    'if [ -f /ros_ws/install/setup.bash ]; then source /ros_ws/install/setup.bash; fi' \
+    'export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}' \
+    'git config --global --add safe.directory "*"' \
+    >> /root/.bashrc
 
-# setup .zshrc
-RUN echo 'export TERM=xterm-256color\n\
-source /opt/ros/humble/setup.zsh\n\
-eval "$(register-python-argcomplete3 ros2)"\n\
-eval "$(register-python-argcomplete3 colcon)"\n'\
->> /root/.zshrc
+RUN sed --in-place --expression '$isource "/opt/ros/humble/setup.sh"' /ros_entrypoint.sh
 
-# source entrypoint setup
-RUN sed --in-place --expression \
-    '$isource "/opt/ros/humble/setup.sh"' \
-    /ros_entrypoint.sh
+ENV DEBIAN_FRONTEND=dialog
+CMD ["/bin/bash"]

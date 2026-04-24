@@ -48,6 +48,44 @@ FAKE_VEL_CHASSIS_X_SIGN="${FAKE_VEL_CHASSIS_X_SIGN:-${LEGACY_FAKE_VEL_CHASSIS_X_
 FAKE_VEL_CHASSIS_Y_SIGN="${FAKE_VEL_CHASSIS_Y_SIGN:-${LEGACY_FAKE_VEL_CHASSIS_Y_FROM_NAV_X_SIGN:-1.0}}"
 RVIZ_STARTED=0
 
+configure_libusb_preload() {
+    local detected_path=""
+    local multiarch=""
+
+    if [ -n "${LIBUSB_PRELOAD_PATH:-}" ]; then
+        detected_path="$LIBUSB_PRELOAD_PATH"
+    else
+        if command -v dpkg-architecture >/dev/null 2>&1; then
+            multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+        fi
+
+        if [ -n "$multiarch" ] && [ -f "/lib/$multiarch/libusb-1.0.so.0" ]; then
+            detected_path="/lib/$multiarch/libusb-1.0.so.0"
+        else
+            case "$(uname -m)" in
+                x86_64|amd64)
+                    detected_path="/lib/x86_64-linux-gnu/libusb-1.0.so.0"
+                    ;;
+                aarch64|arm64)
+                    detected_path="/lib/aarch64-linux-gnu/libusb-1.0.so.0"
+                    ;;
+            esac
+        fi
+    fi
+
+    if [ -n "$detected_path" ] && [ -f "$detected_path" ]; then
+        export LD_PRELOAD="$detected_path"
+        echo ">>> Using libusb preload: $LD_PRELOAD"
+    else
+        if [ -n "${LIBUSB_PRELOAD_PATH:-}" ]; then
+            echo ">>> Warning: LIBUSB_PRELOAD_PATH does not exist: $LIBUSB_PRELOAD_PATH"
+        else
+            echo ">>> Warning: no libusb preload path found; continuing without LD_PRELOAD."
+        fi
+        unset LD_PRELOAD || true
+    fi
+}
+
 start_scan_bridge() {
     if ! wait_for_tf "$NAV_BASE_FRAME" "$LIDAR_SCAN_PARENT_FRAME" 10; then
         echo "Error: $NAV_BASE_FRAME -> $LIDAR_SCAN_PARENT_FRAME TF did not appear."
@@ -253,6 +291,7 @@ echo "   LIDAR_SCAN_XYZ=($LIDAR_SCAN_X, $LIDAR_SCAN_Y, $LIDAR_SCAN_Z)"
 echo "   LIDAR_SCAN_YPR=($LIDAR_SCAN_YAW, $LIDAR_SCAN_PITCH, $LIDAR_SCAN_ROLL)"
 echo "   START_SERIAL_SENDER=$START_SERIAL_SENDER"
 echo "   START_ROBOT_CONTROL_KEEPALIVE=$START_ROBOT_CONTROL_KEEPALIVE"
+echo "   LIBUSB_PRELOAD_PATH=${LIBUSB_PRELOAD_PATH:-auto}"
 echo "   FAKE_VEL_NAV_BASE_FRAME=$FAKE_VEL_NAV_BASE_FRAME"
 echo "   FAKE_VEL_USE_PATH_HEADING_COMPENSATION=$FAKE_VEL_USE_PATH_HEADING_COMPENSATION"
 echo "   FAKE_VEL_SWAP_NAV_XY=$FAKE_VEL_SWAP_NAV_XY"
@@ -272,7 +311,7 @@ ros2 run tf2_ros static_transform_publisher \
     --x "$LIDAR_SCAN_X" --y "$LIDAR_SCAN_Y" --z "$LIDAR_SCAN_Z" \
     --yaw "$LIDAR_SCAN_YAW" --pitch "$LIDAR_SCAN_PITCH" --roll "$LIDAR_SCAN_ROLL" \
     --frame-id "$LIDAR_SCAN_PARENT_FRAME" --child-frame-id "$LIDAR_SCAN_FRAME" &
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+configure_libusb_preload
 ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml &
 sleep 5
 

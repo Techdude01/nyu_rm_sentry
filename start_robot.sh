@@ -58,6 +58,44 @@ ICP_MAP_OFFSET_X="${ICP_MAP_OFFSET_X:-}"
 ICP_MAP_OFFSET_Y="${ICP_MAP_OFFSET_Y:-}"
 ICP_MAP_OFFSET_Z="${ICP_MAP_OFFSET_Z:-0.0}"
 
+configure_libusb_preload() {
+    local detected_path=""
+    local multiarch=""
+
+    if [ -n "${LIBUSB_PRELOAD_PATH:-}" ]; then
+        detected_path="$LIBUSB_PRELOAD_PATH"
+    else
+        if command -v dpkg-architecture >/dev/null 2>&1; then
+            multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+        fi
+
+        if [ -n "$multiarch" ] && [ -f "/lib/$multiarch/libusb-1.0.so.0" ]; then
+            detected_path="/lib/$multiarch/libusb-1.0.so.0"
+        else
+            case "$(uname -m)" in
+                x86_64|amd64)
+                    detected_path="/lib/x86_64-linux-gnu/libusb-1.0.so.0"
+                    ;;
+                aarch64|arm64)
+                    detected_path="/lib/aarch64-linux-gnu/libusb-1.0.so.0"
+                    ;;
+            esac
+        fi
+    fi
+
+    if [ -n "$detected_path" ] && [ -f "$detected_path" ]; then
+        export LD_PRELOAD="$detected_path"
+        echo ">>> Using libusb preload: $LD_PRELOAD"
+    else
+        if [ -n "${LIBUSB_PRELOAD_PATH:-}" ]; then
+            echo ">>> Warning: LIBUSB_PRELOAD_PATH does not exist: $LIBUSB_PRELOAD_PATH"
+        else
+            echo ">>> Warning: no libusb preload path found; continuing without LD_PRELOAD."
+        fi
+        unset LD_PRELOAD || true
+    fi
+}
+
 cleanup() {
     echo "Shutting down all nodes..."
     kill $(jobs -p) 2>/dev/null || true
@@ -204,6 +242,7 @@ echo "   BT_STYLE=$BT_STYLE"
 echo "   LOCALIZATION_MODE=$LOCALIZATION_MODE"
 echo "   USE_SIM_TIME=$USE_SIM_TIME"
 echo "   ENABLE_RVIZ=$ENABLE_RVIZ"
+echo "   LIBUSB_PRELOAD_PATH=${LIBUSB_PRELOAD_PATH:-auto}"
 echo "   WAIT_MANUAL_INITIAL_POSE=$WAIT_MANUAL_INITIAL_POSE"
 if [ "$PUBLISH_NAV2_INITIAL_POSE" = "1" ]; then
     echo "   NAV2_INITIAL_POSE=($NAV2_INITIAL_POSE_X, $NAV2_INITIAL_POSE_Y, yaw=$NAV2_INITIAL_POSE_YAW)"
@@ -248,7 +287,7 @@ ros2 run tf2_ros static_transform_publisher \
     --frame-id body --child-frame-id base_link &
 
 echo ">>> [5/11] Starting FAST-LIO odometry..."
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+configure_libusb_preload
 ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml &
 sleep 5
 

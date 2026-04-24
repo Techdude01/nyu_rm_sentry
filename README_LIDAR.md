@@ -375,6 +375,28 @@ This script automatically:
 6. Launches Nav2
 7. Opens RViz2
 
+### 6.1.1 Jetson Orin 8GB SLAM-only profile
+
+For **Jetson SLAM/navigation only** with vision offloaded to another machine, prefer `**sentry_planner/start_nav_clean.sh`** and keep RViz off unless you explicitly need it:
+
+```bash
+cd ~/sentry_planner
+ENABLE_RVIZ=0 \
+START_SERIAL_SENDER=0 \
+START_ROBOT_CONTROL_KEEPALIVE=0 \
+WAIT_MANUAL_INITIAL_POSE=0 \
+PUBLISH_NAV2_INITIAL_POSE=1 \
+NAV2_INITIAL_POSE_X=0.8 \
+NAV2_INITIAL_POSE_Y=7.8 \
+NAV2_INITIAL_POSE_YAW=0.0 \
+./start_nav_clean.sh
+```
+
+- Replace the `**NAV2_INITIAL_POSE_*`** values with the actual pose on your saved map.
+- If Jetson must still publish chassis commands, keep `**START_SERIAL_SENDER=1`** and provide `**RADAR_PTY`** or `**SERIAL_SENDER_PORT`**.
+- `**LIBUSB_PRELOAD_PATH`** is optional; both launchers now auto-detect the right `**libusb-1.0.so.0`** path for `x86_64` and `arm64`.
+- On the 8 GB Jetson, **RViz during normal runs** and the **full vision + nav + decision stack on one board** are not recommended.
+
 ### 6.2 Manual launch steps
 
 **Step 1: LiDAR driver**
@@ -387,7 +409,10 @@ ros2 launch livox_ros_driver2 msg_MID360_launch.py
 **Step 2: SLAM**
 
 ```bash
-export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
+LIBUSB_MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+[ -n "$LIBUSB_MULTIARCH" ] || case "$(uname -m)" in aarch64|arm64) LIBUSB_MULTIARCH=aarch64-linux-gnu ;; *) LIBUSB_MULTIARCH=x86_64-linux-gnu ;; esac
+LIBUSB_PRELOAD_PATH="/lib/$LIBUSB_MULTIARCH/libusb-1.0.so.0"
+[ -f "$LIBUSB_PRELOAD_PATH" ] && export LD_PRELOAD="$LIBUSB_PRELOAD_PATH" || unset LD_PRELOAD
 ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml
 ```
 
