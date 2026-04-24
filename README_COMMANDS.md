@@ -1,5 +1,3 @@
-
-
 # NYUSH sentry: common commands and data flow
 
 Last updated: 2026-04-11
@@ -31,7 +29,7 @@ Use this file together with `[communication command.txt](communication%20command
 | **§2**     | Bridge auto port pick and PTY                                                                                          |
 | **§3**     | Vision web UI and how it relates to BT / `RobotControl`                                                                |
 | **§4**     | `nav_ws/start_robot.sh` environment variables; **§4.4** `11_map` / `RMUL2026`, PCD / PGM / YAML, map swap and BT goals |
-| **§5–§6**  | Referee topics, `watch_`*, hotkeys                                                                                     |
+| **§5–§6**  | Referee topics, `watch`_*, hotkeys                                                                                     |
 | **§7**     | `rotate_pcd` → `pcd2pgm` → `map_saver_cli`; **§7.4** `map_point_picker.py`                                             |
 | **§8–§11** | `autostart`, script table, minimal terminals, `communication command.txt` notes                                        |
 | **§12**    | **Hardware bring-up**: bench → small field → full field, safety, terminals, checklist, mock referee                    |
@@ -207,12 +205,12 @@ Two different things:
 `**center_attack_simple.xml` only has `SubRobotStatus` and `SubGameStatus`, no `SubArmors`, no `IsDetectEnemy`.** So:
 
 - Vision **is** used; the tree **does not** put “saw armor” in conditions.
-- At center hold, BT sets `**RobotControl`** e.g. `**allow_vision_control=True`, `stop_gimbal_scan=True**` as **mode bits**; **actual track** is still **vision + SP**, not BT armor subscription.
+- At center hold, BT sets `**RobotControl`** e.g. `**allow_vision_control=True`, `stop_gimbal_scan=True`** as **mode bits**; **actual track** is still **vision + SP**, not BT armor subscription.
 - In transit with `**allow_vision_control=False`**, behavior leans **scan**; vision can still run and the web UI still shows detections; MCU + flags decide takeover (firmware is source of truth).
 
-**When armor topic matters for BT:** legacy trees with `**SubArmors` + `IsDetectEnemy`** (e.g. `**retreat_attack_left.xml**`): BT **subscribes** `/detector/armors` for **enemy seen / not** branches.
+**When armor topic matters for BT:** legacy trees with `**SubArmors` + `IsDetectEnemy`** (e.g. `**retreat_attack_left.xml`**): BT **subscribes** `/detector/armors` for **enemy seen / not** branches.
 
-**Optional third path:** `bt_comm_adapter.py` can synthesize `**/detector/armors`** from `**auto_aim_target_pos**` for trees that need it; different from **SP straight to MCU**.
+**Optional third path:** `bt_comm_adapter.py` can synthesize `**/detector/armors`** from `**auto_aim_target_pos`** for trees that need it; different from **SP straight to MCU**.
 
 **Summary:**
 
@@ -228,8 +226,6 @@ Two different things:
 
 
 ---
-
-
 
 ## 4. `~/nav_ws/start_robot.sh`: environment variables for debugging
 
@@ -254,14 +250,14 @@ START_FAKE_VEL_TRANSFORM=1 \
 
 | Variable                               | Meaning                                                                                                                                                                                               |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `**MAP_FILE**`                         | Nav2 `map_server` **map yaml** (references **pgm**). Lab map `**11_map`**; field `**RMUL2026.yaml**`. See **§4.4**.                                                                                   |
+| `**MAP_FILE**`                         | Nav2 `map_server` **map yaml** (references **pgm**). Lab map `**11_map`**; field `**RMUL2026.yaml`**. See **§4.4**.                                                                                   |
 | `**BT_STYLE`**                         | Behavior XML **without `.xml`**. `center_attack_fullstack` = full stack; `center_attack_simple` = simple (common default in `sentry_planner/start_robot.sh`).                                         |
 | `**BT_START_GOAL` / `BT_END_GOAL**`    | Passed to `rm_behavior_tree` as `**start_goal_pose` / `end_goal_pose**` on the blackboard; format `x;y;z; qx;qy;qz;qw`. After a map swap, reconcile with hard-coded `**SendGoal**` in XML (**§4.4**). |
-| `**START_SERIAL_SENDER=1`**            | Starts `**serial_sender.py --ros2**` in the background; writes ROS velocity and control to `**RADAR_PTY**`.                                                                                           |
+| `**START_SERIAL_SENDER=1`**            | Starts `**serial_sender.py --ros2`** in the background; writes ROS velocity and control to `**RADAR_PTY**`.                                                                                           |
 | `**RADAR_PTY**`                        | **Must match** the current bridge Radar side (prefer `/tmp/nyush-rm-sentry-radar`). Script maps this to `SERIAL_SENDER_PORT`.                                                                         |
-| `**START_BT=1`**                       | Starts `**bt_comm_adapter.py**` + `**rm_behavior_tree**`. Forces `**SERIAL_SENDER_TOPIC` to `/cmd_vel_chassis_bt**` (if it was `/cmd_vel_chassis`) so BT `chassis_spin_vel` merges correctly.         |
+| `**START_BT=1`**                       | Starts `**bt_comm_adapter.py`** + `**rm_behavior_tree**`. Forces `**SERIAL_SENDER_TOPIC` to `/cmd_vel_chassis_bt**` (if it was `/cmd_vel_chassis`) so BT `chassis_spin_vel` merges correctly.         |
 | `**SERIAL_SENDER_DISABLE_STATUS_PUB**` | Passed to sender as `**--disable-status-pub**`: `0` = **publish** `/game_status`, `/robot_status` (from 0x5C/0x5D); `1` = do not publish (avoid fighting hotkey or other mock referee).               |
-| `**START_FAKE_VEL_TRANSFORM=1`**       | Starts `**fake_vel_transform**`: `/cmd_vel` → `/cmd_vel_chassis`. Aligns Nav2 with chassis frame / gimbal compensation.                                                                               |
+| `**START_FAKE_VEL_TRANSFORM=1`**       | Starts `**fake_vel_transform`**: `/cmd_vel` → `/cmd_vel_chassis`. Aligns Nav2 with chassis frame / gimbal compensation.                                                                               |
 
 
 ### 4.2 Workspaces sourced inside the script
@@ -280,8 +276,8 @@ By default sources `**~/nav_ws/install**`, `**sentry_planner/install**` (if pres
 
 | Scenario              | Typical `MAP_FILE`                                                       | Notes                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Lab / self-mapped** | `$HOME/Desktop/map/11_map.yaml`                                          | After mapping (**§7**), `map_saver_cli -f 11_map` under `**~/Desktop/map/`** yields `**11_map.yaml` + `11_map.pgm**`. Point `**MAP_FILE**` at the yaml. |
-| **RMUL 2026 field**   | `…/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml` | Fixed field layout; `**RMUL2026.pgm`** alongside. Point `**MAP_FILE**` at that yaml.                                                                    |
+| **Lab / self-mapped** | `$HOME/Desktop/map/11_map.yaml`                                          | After mapping (**§7**), `map_saver_cli -f 11_map` under `**~/Desktop/map/`** yields `**11_map.yaml` + `11_map.pgm`**. Point `**MAP_FILE**` at the yaml. |
+| **RMUL 2026 field**   | `…/sentry_planner/rm_navigation_ws/src/rm_nav_bringup/map/RMUL2026.yaml` | Fixed field layout; `**RMUL2026.pgm`** alongside. Point `**MAP_FILE`** at that yaml.                                                                    |
 
 
 If `**image:**` in yaml is relative, keep **pgm next to yaml**; do not copy yaml alone.
@@ -300,12 +296,12 @@ At runtime Nav2 only cares about **map yaml + referenced pgm**; **PCD** is only 
 
 #### 4.4.3 BT start / end goals: remeasure after map swap
 
-Some trees hard-code `**SendGoal`** world poses in XML. After `**11_map` ↔ `RMUL2026**` (or any new map), the **same numbers may land in obstacles or off-field**; remeasure and:
+Some trees hard-code `**SendGoal`** world poses in XML. After `**11_map` ↔ `RMUL2026`** (or any new map), the **same numbers may land in obstacles or off-field**; remeasure and:
 
 - **Update env before `start_robot.sh`**: `**BT_START_GOAL**`, `**BT_END_GOAL**` (`x;y;z; qx;qy;qz;qw`), and
 - **Check / edit XML** for your actual `**BT_STYLE`** (blackboard and XML can coexist; **what the tree nodes use wins**).
 
-**Where coordinates come from:** after saving the map yaml, on a machine with a **GUI** (field PC often via **VNC**), run `**map_point_picker.py`**, click on the map for `**x, y**` relative to map origin, then fill env or XML. Details **§7.4**.
+**Where coordinates come from:** after saving the map yaml, on a machine with a **GUI** (field PC often via **VNC**), run `**map_point_picker.py`**, click on the map for `**x, y`** relative to map origin, then fill env or XML. Details **§7.4**.
 
 ---
 
@@ -389,7 +385,7 @@ cd ~/Desktop/map
 ros2 run nav2_map_server map_saver_cli -f 11_map
 ```
 
-- **Purpose**: save current `**/map`** as `**11_map.yaml` + `11_map.pgm**` (`-f` prefix).
+- **Purpose**: save current `**/map`** as `**11_map.yaml` + `11_map.pgm`** (`-f` prefix).
 - Point `**MAP_FILE**` at that yaml for `start_robot.sh`.
 - **PCD/PGM/YAML roles, field `RMUL2026`, retune BT goals on map change**: **§4.4**.
 
@@ -467,8 +463,6 @@ Without a laptop, **one command** brings up bridge (via systemd) + vision + Nav 
 
 ---
 
-
-
 ## 12. Hardware bring-up
 
 ### 12.1 Phased strategy
@@ -493,21 +487,21 @@ Without a matching arena you can still tune comms and BT—**do not claim “ful
 ### 12.3 `start_robot.sh`, bridge, sender
 
 - `**start_robot.sh` (nav_ws or sentry_planner) does not start `sentry_bridge`** by default; run bridge in **its own terminal** or systemd.
-- To push `**/cmd_vel_chassis_bt`** and `**/robot_control**` to MCU: `**START_SERIAL_SENDER=1 RADAR_PTY=<Radar PTY>**` (same as **§4**).
-- On the current field stack, `**/cmd_vel_chassis_bt`** = Nav2 chassis velocity + `**RobotControl.chassis_spin_vel**` via `**bt_comm_adapter**`, then **sender → Radar PTY → MCU**; `**scan_*`, `allow_vision_control`** on `**/robot_control**` go **A3 → MCU** (wire details [README_COMMUNICATION.md](README_COMMUNICATION.md)).
+- To push `**/cmd_vel_chassis_bt`** and `**/robot_control`** to MCU: `**START_SERIAL_SENDER=1 RADAR_PTY=<Radar PTY>**` (same as **§4**).
+- On the current field stack, `**/cmd_vel_chassis_bt`** = Nav2 chassis velocity + `**RobotControl.chassis_spin_vel`** via `**bt_comm_adapter**`, then **sender → Radar PTY → MCU**; `**scan_*`, `allow_vision_control`** on `**/robot_control`** go **A3 → MCU** (wire details [README_COMMUNICATION.md](README_COMMUNICATION.md)).
 
 ### 12.4 Suggested manual terminals
 
 Rewrite paths for your machine.
 
 
-| Terminal                   | Content                                                                                                                                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1 — Nav / localization** | e.g. `ros2 launch rm_nav_bringup bringup_real.launch.py world:=<map_prefix> mode:=nav …` (`world` matches `**MAP_FILE`** / map package; `lio` / `localization` per site)                                               |
-| **2 — bridge**             | `cd nyush-rm-control && just sentry-bridge` (or `--port /dev/ttyACM0`); note **Vision / Radar PTY**, prefer `**/tmp/nyush-rm-sentry-radar`**                                                                           |
-| **3 — sender**             | after `source /opt/ros/humble/setup.bash`, `python3 …/nyush-rm-vision/serial_sender.py --port <Radar PTY> --ros2 --topic /cmd_vel_chassis_bt`; skip if **§4** `**START_SERIAL_SENDER=1`** already starts it            |
-| **4 — BT debug**           | `bash sentry_planner/scripts/run_center_attack_debug_session.sh` (keeps `**bt_comm_adapter`**, `**rm_behavior_tree**`, `**watch_center_attack_state.py**`); **requires** Nav2 and `**navigate_to_pose` action server** |
-| **5 — Vision (optional)**  | start `nyush-rm-vision` sentry; `**configs/sentry.yaml` `com_port`** must be current **Vision PTY**                                                                                                                    |
+| Terminal                   | Content                                                                                                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **1 — Nav / localization** | e.g. `ros2 launch rm_nav_bringup bringup_real.launch.py world:=<map_prefix> mode:=nav …` (`world` matches `**MAP_FILE`** / map package; `lio` / `localization` per site)                                           |
+| **2 — bridge**             | `cd nyush-rm-control && just sentry-bridge` (or `--port /dev/ttyACM0`); note **Vision / Radar PTY**, prefer `**/tmp/nyush-rm-sentry-radar`**                                                                       |
+| **3 — sender**             | after `source /opt/ros/humble/setup.bash`, `python3 …/nyush-rm-vision/serial_sender.py --port <Radar PTY> --ros2 --topic /cmd_vel_chassis_bt`; skip if **§4** `**START_SERIAL_SENDER=1`** already starts it        |
+| **4 — BT debug**           | `bash sentry_planner/scripts/run_center_attack_debug_session.sh` (keeps `**bt_comm_adapter`**, `**rm_behavior_tree`**, `**watch_center_attack_state.py**`); requires Nav2 and `**navigate_to_pose` action server** |
+| **5 — Vision (optional)**  | start `nyush-rm-vision` sentry; `**configs/sentry.yaml` `com_port`** must be current **Vision PTY**                                                                                                                |
 
 
 ### 12.5 Minimal checklist
@@ -561,8 +555,6 @@ At minimum: **stable bridge/sender**, **stable localization**, `**navigate_to_po
 - `**watch_center_attack_state.py` defaults for `--home-x/y`, `--center-x/y` may not match XML `SendGoal`**; align args with the tree ([README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) **§5.1**).
 
 ---
-
-
 
 ## 13. Which README should I open?
 

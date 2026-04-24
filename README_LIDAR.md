@@ -1,8 +1,8 @@
 # RoboMaster sentry autonomous navigation (LiDAR + Nav2)
 
-[![ROS2 Humble](https://img.shields.io/badge/ROS2-Humble-blue)](https://docs.ros.org/en/humble/)
-[![Ubuntu 22.04](https://img.shields.io/badge/Ubuntu-22.04-orange)](https://ubuntu.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[ROS2 Humble](https://docs.ros.org/en/humble/)
+[Ubuntu 22.04](https://ubuntu.com/)
+[License: MIT](LICENSE)
 
 > **LiDAR SLAM + Nav2 autonomous navigation for the RoboMaster sentry platform.**  
 > **NYUSH add-ons (§0, §6.4 Sim2Real / Gazebo / Groot2, §10.8):** 2026-04-11
@@ -11,48 +11,54 @@
 
 ## 0. How the five READMEs split work
 
-| Document | Role |
-|------|------|
-| [README.md](README.md) | **Central index**: overview, diagram, build order, shortest startup |
-| [README_COMMUNICATION.md](README_COMMUNICATION.md) | **Comms and protocol**: `sentry_bridge`, PTY, `serial_sender`, `bt_comm_adapter`, frames |
-| [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) | **Behavior trees**: XML, `SendGoal` / `RobotControl`, debug scripts |
-| **This file** | **LiDAR + SLAM + Nav2**: Mid360, FAST-LIO, `my_nav2_params`, **§6.4 Gazebo (Sim2Real first step)**, hardware launch, TF, mapping, troubleshooting; [**§10.8 hardware navigation prerequisites**](#108-nyush-hardware-navigation-prerequisites) |
-| [README_COMMANDS.md](README_COMMANDS.md) | **Commands and data flow**: **§7** mapping (`rotate_pcd` / `pcd2pgm` / `map_saver_cli`), **§4.4** map files, **§12** hardware bring-up |
+
+| Document                                                     | Role                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [README.md](README.md)                                       | **Central index**: overview, diagram, build order, shortest startup                                                                                                                                                                            |
+| [README_COMMUNICATION.md](README_COMMUNICATION.md)           | **Comms and protocol**: `sentry_bridge`, PTY, `serial_sender`, `bt_comm_adapter`, frames                                                                                                                                                       |
+| [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) | **Behavior trees**: XML, `SendGoal` / `RobotControl`, debug scripts                                                                                                                                                                            |
+| **This file**                                                | **LiDAR + SLAM + Nav2**: Mid360, FAST-LIO, `my_nav2_params`, **§6.4 Gazebo (Sim2Real first step)**, hardware launch, TF, mapping, troubleshooting; **[§10.8 hardware navigation prerequisites](#108-nyush-hardware-navigation-prerequisites)** |
+| [README_COMMANDS.md](README_COMMANDS.md)                     | **Commands and data flow**: **§7** mapping (`rotate_pcd` / `pcd2pgm` / `map_saver_cli`), **§4.4** map files, **§12** hardware bring-up                                                                                                         |
+
 
 **How to choose:** **Gazebo, RMUL2026, `bringup_sim`, Sim2Real** → **§6.4 here** + [mid360 command.txt](mid360%20command.txt); LiDAR offline, point clouds, FAST-LIO, Nav2 tuning, costmap, TF → **rest of this file**; **shell and `MAP_FILE`** → [README_COMMANDS.md](README_COMMANDS.md) **§7, §4.4**; **behavior tree / Groot2** → [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md); **serial and PTY** → [README_COMMUNICATION.md](README_COMMUNICATION.md).
 
-**Boundaries:** **§1–§9** keep the original Polar Bear stack generic notes in English; **NYUSH hardware closed loop** starts at **§10.8**, aligned with [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12). One-shot **`sentry_planner/start_robot.sh`** brings up Mid360, FAST-LIO, `pointcloud_to_laserscan`, Nav2, etc.; **MCU serial** still only via **bridge + `serial_sender`** (see comms doc).
+**Boundaries:** **§1–§9** keep the original Polar Bear stack generic notes in English; **NYUSH hardware closed loop** starts at **§10.8**, aligned with [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12). One-shot `**sentry_planner/start_robot.sh`** brings up Mid360, FAST-LIO, `pointcloud_to_laserscan`, Nav2, etc.; **MCU serial** still only via **bridge + `serial_sender`** (see comms doc).
 
 ### NYUSH: recommended Sim2Real (simulation → hardware)
 
 Default workflow: **tune parameters and `center_attack_simple` (approach center / hold / home) in Gazebo RMUL2026 + Nav2, then switch to Mid360 + FAST-LIO on the robot.**
 
-| Phase | Where to read |
-|------|--------|
-| **Single Gazebo launch, `run_center_attack_debug_session`, mock `/game_status`, step-by-step pubs** | Root **[mid360 command.txt](mid360%20command.txt)** (copy-paste) |
-| **Launch parameters vs hardware** | **§6.4** here; longer package notes [rm_navigation_ws/README.md](rm_navigation_ws/README.md) |
-| **Behavior tree + Groot2 port, `Project.btproj`** | [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) **§18.1** |
-| **Hardware terminals, bridge, PTY** | [README_COMMUNICATION.md](README_COMMUNICATION.md), [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12) |
+
+| Phase                                                                                               | Where to read                                                                                                               |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Single Gazebo launch, `run_center_attack_debug_session`, mock `/game_status`, step-by-step pubs** | Root **[mid360 command.txt](mid360%20command.txt)** (copy-paste)                                                            |
+| **Launch parameters vs hardware**                                                                   | **§6.4** here; longer package notes [rm_navigation_ws/README.md](rm_navigation_ws/README.md)                                |
+| **Behavior tree + Groot2 port, `Project.btproj`**                                                   | [README_BEHAVIOR_TREE_FLOW.md](README_BEHAVIOR_TREE_FLOW.md) **§18.1**                                                      |
+| **Hardware terminals, bridge, PTY**                                                                 | [README_COMMUNICATION.md](README_COMMUNICATION.md), [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12) |
+
 
 ---
 
 ## Table of contents
 
-| Section | Topic |
-|---------|------|
-| [1. Project overview](#1-project-overview) | Goals and results |
-| [2. System architecture](#2-system-architecture) | Diagrams, TF, data flow |
-| [3. Hardware configuration](#3-hardware-configuration) | Compute, LiDAR, chassis |
-| [4. Software stack](#4-software-stack) | ROS packages and topics |
-| [5. Installation guide](#5-installation-guide) | Prerequisites and build |
-| [6. Quick start](#6-quick-start) | Launch and mapping (includes **§6.4** NYUSH Gazebo) |
-| [7. Configuration](#7-configuration) | Nav2 / FAST-LIO / network |
-| [8. Performance metrics](#8-performance-metrics) | Resources and latency |
-| [9. Troubleshooting](#9-troubleshooting) | Common failures |
-| [10. Development notes](#10-development-notes) | Field notes (includes **§10.8**) |
+
+| Section                                                                                      | Topic                                                  |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [1. Project overview](#1-project-overview)                                                   | Goals and results                                      |
+| [2. System architecture](#2-system-architecture)                                             | Diagrams, TF, data flow                                |
+| [3. Hardware configuration](#3-hardware-configuration)                                       | Compute, LiDAR, chassis                                |
+| [4. Software stack](#4-software-stack)                                                       | ROS packages and topics                                |
+| [5. Installation guide](#5-installation-guide)                                               | Prerequisites and build                                |
+| [6. Quick start](#6-quick-start)                                                             | Launch and mapping (includes **§6.4** NYUSH Gazebo)    |
+| [7. Configuration](#7-configuration)                                                         | Nav2 / FAST-LIO / network                              |
+| [8. Performance metrics](#8-performance-metrics)                                             | Resources and latency                                  |
+| [9. Troubleshooting](#9-troubleshooting)                                                     | Common failures                                        |
+| [10. Development notes](#10-development-notes)                                               | Field notes (includes **§10.8**)                       |
 | [10.8 NYUSH hardware navigation prerequisites](#108-nyush-hardware-navigation-prerequisites) | `map→odom→base_link`, `navigate_to_pose`, map vs arena |
-| [11. Future plans](#11-future-plans) | Roadmap |
-| [12. References](#12-references) | Links |
+| [11. Future plans](#11-future-plans)                                                         | Roadmap                                                |
+| [12. References](#12-references)                                                             | Links                                                  |
+
 
 ---
 
@@ -64,25 +70,29 @@ This project implements a complete autonomous navigation system for the RoboMast
 
 ### 1.2 Key features
 
-| Feature | Description |
-|---------|-------------|
-| **SLAM** | Real-time 3D LiDAR odometry with FastLIO2 / Point-LIO |
-| **Mapping** | 3D PCD to 2D PGM map conversion |
-| **Navigation** | Nav2 global/local planning with DWB controller |
-| **Obstacle avoidance** | Real-time static and dynamic obstacle handling |
-| **Chassis control** | Serial link to STM32 C-board |
+
+| Feature                | Description                                           |
+| ---------------------- | ----------------------------------------------------- |
+| **SLAM**               | Real-time 3D LiDAR odometry with FastLIO2 / Point-LIO |
+| **Mapping**            | 3D PCD to 2D PGM map conversion                       |
+| **Navigation**         | Nav2 global/local planning with DWB controller        |
+| **Obstacle avoidance** | Real-time static and dynamic obstacle handling        |
+| **Chassis control**    | Serial link to STM32 C-board                          |
+
 
 ### 1.3 Performance achieved
 
 **Indoor navigation (5×5 m area):**
 
-| Metric | Value |
-|--------|-------|
-| Cruise speed | 0.2–0.26 m/s |
-| Obstacle clearance | ≥ 0.3 m |
-| Position error | ≤ 0.2 m |
-| Success rate | ≥ 90% (20 trials) |
-| Collision-free | Yes (5+ consecutive runs) |
+
+| Metric             | Value                     |
+| ------------------ | ------------------------- |
+| Cruise speed       | 0.2–0.26 m/s              |
+| Obstacle clearance | ≥ 0.3 m                   |
+| Position error     | ≤ 0.2 m                   |
+| Success rate       | ≥ 90% (20 trials)         |
+| Collision-free     | Yes (5+ consecutive runs) |
+
 
 ---
 
@@ -169,52 +179,61 @@ LiDAR (10Hz) ──▶ SLAM ──▶ /cloud_registered ──▶ /scan ──�
 
 ### 3.1 Computing platform
 
-| Component | NUC 12 Pro (primary) | Jetson Orin Nano (backup) |
-|-----------|---------------------|---------------------------|
-| CPU | Intel i7-1260P (16 threads) | ARM Cortex-A78AE (6 cores) |
-| RAM | 16 GB DDR4 | 8 GB LPDDR5 |
-| Storage | 512 GB NVMe SSD | 128 GB eMMC |
-| OS | Ubuntu 22.04 LTS | Ubuntu 22.04 (JetPack 6) |
-| Power | 19V DC | 9-20V DC |
-| Suitability | Full stack (recommended) | Edge compute, mapping only |
+
+| Component   | NUC 12 Pro (primary)        | Jetson Orin Nano (backup)  |
+| ----------- | --------------------------- | -------------------------- |
+| CPU         | Intel i7-1260P (16 threads) | ARM Cortex-A78AE (6 cores) |
+| RAM         | 16 GB DDR4                  | 8 GB LPDDR5                |
+| Storage     | 512 GB NVMe SSD             | 128 GB eMMC                |
+| OS          | Ubuntu 22.04 LTS            | Ubuntu 22.04 (JetPack 6)   |
+| Power       | 19V DC                      | 9-20V DC                   |
+| Suitability | Full stack (recommended)    | x                          |
+
 
 ### 3.2 LiDAR sensors
 
-| Specification | Livox Mid-360 ✅ | Unitree L2 ⚠️ |
-|---------------|------------------|---------------|
-| Role | **Primary LiDAR** | **Experimental** |
-| FOV | 360° × 59° | 360° × 90° |
-| Range | 40 m | 30 m |
-| Points/sec | 200,000 | 43,200 |
-| IMU | Built-in (stable) | Built-in (noisy on gimbal) |
-| Interface | Ethernet (UDP) | USB Serial (ttyACM0) |
-| Data Format | CustomMsg (offset_time) | PointCloud2 |
-| Time Sync | ✅ Excellent | ⚠️ Weak |
-| Tilted Mount | ✅ Supported | ⚠️ IMU drift issue |
-| Status | **Production Ready** | **Experimental** |
+
+| Specification | Livox Mid-360 ✅         | Unitree L2 ⚠️              |
+| ------------- | ----------------------- | -------------------------- |
+| Role          | **Primary LiDAR**       | **Experimental**           |
+| FOV           | 360° × 59°              | 360° × 90°                 |
+| Range         | 40 m                    | 30 m                       |
+| Points/sec    | 200,000                 | 43,200                     |
+| IMU           | Built-in (stable)       | Built-in (noisy on gimbal) |
+| Interface     | Ethernet (UDP)          | USB Serial (ttyACM0)       |
+| Data Format   | CustomMsg (offset_time) | PointCloud2                |
+| Time Sync     | ✅ Excellent             | ⚠️ Weak                    |
+| Tilted Mount  | ✅ Supported             | ⚠️ IMU drift issue         |
+| Status        | **Production Ready**    | **Experimental**           |
+
 
 **Mid-360 network configuration:**
+
 - LiDAR IP: `192.168.1.182`
 - Host IP: `192.168.1.2`
 - UDP Ports: 56101-56501
 
 ### 3.3 Chassis controller
 
-| Item | Specification |
-|------|---------------|
-| Controller | STM32 C-board (RoboMaster) |
-| Interface | UART via USB |
-| Baud rate | 115200 |
-| Protocol | Binary (15 bytes) |
+
+| Item         | Specification                              |
+| ------------ | ------------------------------------------ |
+| Controller   | STM32 C-board (RoboMaster)                 |
+| Interface    | UART via USB                               |
+| Baud rate    | 115200                                     |
+| Protocol     | Binary (15 bytes)                          |
 | Frame format | `0xA5 0x5A [vx:4B] [vy:4B] [wz:4B] [CRC8]` |
-| Port | `/dev/ttyACM0` |
+| Port         | `/dev/ttyACM0`                             |
+
 
 ### 3.4 Remote access
 
-| Service | Port | Address | Use |
-|---------|------|---------|------|
-| SSH | 9913 | 42.192.208.124:9913 | Terminal access |
-| VNC | 9914 | 42.192.208.124:9914 | Desktop view |
+
+| Service | Port | Address             | Use             |
+| ------- | ---- | ------------------- | --------------- |
+| SSH     | 9913 | 42.192.208.124:9913 | Terminal access |
+| VNC     | 9914 | 42.192.208.124:9914 | Desktop view    |
+
 
 ```bash
 # SSH
@@ -230,16 +249,18 @@ VNC Viewer → 42.192.208.124:9914
 
 ### 4.1 Core dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| ROS 2 | Humble | Middleware |
-| Nav2 | Humble | Navigation stack |
-| FastLIO2 | Latest | SLAM (Mid-360) |
-| Point-LIO | ROS 2 fork | SLAM (Unitree L2) |
-| livox_ros_driver2 | 1.1.2 | Mid-360 driver |
-| unitree_lidar_ros2 | Latest | Unitree L2 driver |
-| pcd2pgm | Latest | Map conversion |
-| pointcloud_to_laserscan | Latest | 3D to 2D scan |
+
+| Package                 | Version    | Purpose           |
+| ----------------------- | ---------- | ----------------- |
+| ROS 2                   | Humble     | Middleware        |
+| Nav2                    | Humble     | Navigation stack  |
+| FastLIO2                | Latest     | SLAM (Mid-360)    |
+| Point-LIO               | ROS 2 fork | SLAM (Unitree L2) |
+| livox_ros_driver2       | 1.1.2      | Mid-360 driver    |
+| unitree_lidar_ros2      | Latest     | Unitree L2 driver |
+| pcd2pgm                 | Latest     | Map conversion    |
+| pointcloud_to_laserscan | Latest     | 3D to 2D scan     |
+
 
 ### 4.2 Workspace layout
 
@@ -265,15 +286,17 @@ VNC Viewer → 42.192.208.124:9914
 
 ### 4.3 Key ROS 2 topics
 
-| Topic | Type | Frequency | Description |
-|-------|------|-----------|-------------|
-| `/livox/lidar` | CustomMsg | 10 Hz | Raw point cloud |
-| `/livox/imu` | Imu | 200 Hz | IMU data |
-| `/Odometry` | Odometry | 10 Hz | Pose from SLAM |
-| `/cloud_registered` | PointCloud2 | 10 Hz | Registered cloud |
-| `/scan` | LaserScan | 10 Hz | 2D laser scan |
-| `/cmd_vel` | Twist | 20 Hz | Velocity commands |
-| `/map` | OccupancyGrid | Static | Navigation map |
+
+| Topic               | Type          | Frequency | Description       |
+| ------------------- | ------------- | --------- | ----------------- |
+| `/livox/lidar`      | CustomMsg     | 10 Hz     | Raw point cloud   |
+| `/livox/imu`        | Imu           | 200 Hz    | IMU data          |
+| `/Odometry`         | Odometry      | 10 Hz     | Pose from SLAM    |
+| `/cloud_registered` | PointCloud2   | 10 Hz     | Registered cloud  |
+| `/scan`             | LaserScan     | 10 Hz     | 2D laser scan     |
+| `/cmd_vel`          | Twist         | 20 Hz     | Velocity commands |
+| `/map`              | OccupancyGrid | Static    | Navigation map    |
+
 
 ---
 
@@ -355,18 +378,21 @@ This script automatically:
 ### 6.2 Manual launch steps
 
 **Step 1: LiDAR driver**
+
 ```bash
 cd ~/nav_ws && source install/setup.bash
 ros2 launch livox_ros_driver2 msg_MID360_launch.py
 ```
 
 **Step 2: SLAM**
+
 ```bash
 export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
 ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml
 ```
 
 **Step 3: TF transforms**
+
 ```bash
 ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom camera_init &
 ros2 run tf2_ros static_transform_publisher 0 0 0 0 -0.873 0 body base_link &
@@ -374,6 +400,7 @@ ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link base_footprint
 ```
 
 **Step 4: Point cloud to LaserScan**
+
 ```bash
 ros2 run pointcloud_to_laserscan pointcloud_to_laserscan_node --ros-args \
   -p target_frame:=base_link \
@@ -383,6 +410,7 @@ ros2 run pointcloud_to_laserscan pointcloud_to_laserscan_node --ros-args \
 ```
 
 **Step 5: Nav2**
+
 ```bash
 ros2 launch nav2_bringup bringup_launch.py \
     use_sim_time:=False \
@@ -391,6 +419,7 @@ ros2 launch nav2_bringup bringup_launch.py \
 ```
 
 **Step 6: Chassis control**
+
 ```bash
 sudo chmod 777 /dev/ttyACM0
 python3 serial_sender.py --port /dev/ttyACM0 --ros2
@@ -414,8 +443,6 @@ ros2 launch pcd2pgm pcd2pgm_launch.py
 # 5. Save map
 ros2 run nav2_map_server map_saver_cli -f /home/nyu/Desktop/map/my_map
 ```
-
-<a id="nyush-gazebo-sim2real"></a>
 
 ### 6.4 NYUSH Gazebo simulation (RMUL2026 + Nav2, Sim2Real first step)
 
@@ -441,17 +468,19 @@ ros2 launch rm_nav_bringup bringup_sim.launch.py \
 bash /path/to/sentry_planner/scripts/run_center_attack_debug_session.sh
 ```
 
-Script defaults **`USE_SIM_TIME=True`** to match Gazebo. For **Groot2 remote monitor**, launch with **`enable_groot:=true`** (port **1667** by default; see [README_BEHAVIOR_TREE_FLOW.md §18.1](README_BEHAVIOR_TREE_FLOW.md#181-groot2-workflow)).
+Script defaults `**USE_SIM_TIME=True**` to match Gazebo. For **Groot2 remote monitor**, launch with `**enable_groot:=true`** (port **1667** by default; see [README_BEHAVIOR_TREE_FLOW.md §18.1](README_BEHAVIOR_TREE_FLOW.md#181-groot2-workflow)).
 
-**Terminal 3 — mock referee, test center / hold / home:** copy **`ros2 topic pub` examples from [mid360 command.txt](mid360%20command.txt) §4–§8**; expected watcher states (`APPROACH_CENTER`, `CENTER_HOLD_ATTACK`, `HOME_RECOVER`, etc.) are documented there.
+**Terminal 3 — mock referee, test center / hold / home:** copy `**ros2 topic pub` examples from [mid360 command.txt](mid360%20command.txt) §4–§8**; expected watcher states (`APPROACH_CENTER`, `CENTER_HOLD_ATTACK`, `HOME_RECOVER`, etc.) are documented there.
 
 **Simulation vs hardware:**
 
-| Aspect | Gazebo (this section) | Hardware (see §10.8, [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12)) |
-|------|------------------|------------------------------------------------------------------------|
-| Localization | `use_gazebo_odom:=true` + **AMCL** | FAST-LIO / `bringup_real`, etc. |
-| Time | **`use_sim_time`** | Usually `use_sim_time:=false` |
-| Velocities to MCU | Often ROS-only debug; to exercise **Radar PTY + sender** | **bridge + `serial_sender`** |
+
+| Aspect            | Gazebo (this section)                                    | Hardware (see §10.8, [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12)) |
+| ----------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Localization      | `use_gazebo_odom:=true` + **AMCL**                       | FAST-LIO / `bringup_real`, etc.                                                               |
+| Time              | `**use_sim_time`**                                       | Usually `use_sim_time:=false`                                                                 |
+| Velocities to MCU | Often ROS-only debug; to exercise **Radar PTY + sender** | **bridge + `serial_sender`**                                                                  |
+
 
 **Optional — Groot2 GUI (same as mid360 command.txt §13):**
 
@@ -460,7 +489,7 @@ cd ~/Desktop
 ./Groot2-v1.9.0-x86_64.AppImage
 ```
 
-In Groot2 open **`rm_decision_ws/rm_behavior_tree/config/Project.btproj`**, Monitor to **`127.0.0.1:1667`** (or your `groot_port`). **AppImage filename** varies with download—use the file on your `~/Desktop`.
+In Groot2 open `**rm_decision_ws/rm_behavior_tree/config/Project.btproj**`, Monitor to `**127.0.0.1:1667**` (or your `groot_port`). **AppImage filename** varies with download—use the file on your `~/Desktop`.
 
 More sim maps, Docker, and history: **[rm_navigation_ws/README.md](rm_navigation_ws/README.md)**.
 
@@ -472,14 +501,16 @@ More sim maps, Docker, and history: **[rm_navigation_ws/README.md](rm_navigation
 
 Path: `~/nav_ws/my_nav2_params.yaml`
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `max_vel_x` | 0.26 m/s | Max forward speed |
-| `max_vel_y` | 0.26 m/s | Max lateral speed |
-| `max_vel_theta` | 0.0 rad/s | Rotation disabled |
-| `acc_lim_x/y` | 2.5 m/s² | Acceleration limit |
-| `min_speed_xy` | 0.05 m/s | Min speed (deadband) |
-| `controller_frequency` | 10.0 Hz | Control loop rate |
+
+| Parameter              | Value     | Description          |
+| ---------------------- | --------- | -------------------- |
+| `max_vel_x`            | 0.26 m/s  | Max forward speed    |
+| `max_vel_y`            | 0.26 m/s  | Max lateral speed    |
+| `max_vel_theta`        | 0.0 rad/s | Rotation disabled    |
+| `acc_lim_x/y`          | 2.5 m/s²  | Acceleration limit   |
+| `min_speed_xy`         | 0.05 m/s  | Min speed (deadband) |
+| `controller_frequency` | 10.0 Hz   | Control loop rate    |
+
 
 ### 7.2 FastLIO parameters
 
@@ -517,39 +548,47 @@ Path: `~/nav_ws/src/livox_ros_driver2/config/MID360_config.json`
 
 **Platform: NUC 12 Pro (i7-1260P, 16 GB RAM)**
 
-| Metric | Value |
-|--------|-------|
-| CPU peak | ~40% |
-| CPU average | ~36% |
-| Memory | ~6.3 GB |
-| Network RX | ~3.15 MB/s |
+
+| Metric      | Value      |
+| ----------- | ---------- |
+| CPU peak    | ~40%       |
+| CPU average | ~36%       |
+| Memory      | ~6.3 GB    |
+| Network RX  | ~3.15 MB/s |
+
 
 ### 8.2 Topic frequencies
 
-| Topic | Measured | Expected | Status |
-|-------|----------|----------|--------|
-| `/livox/lidar` | 10 Hz | 10 Hz | ✅ |
-| `/livox/imu` | 200 Hz | 200 Hz | ✅ |
-| `/Odometry` | 10 Hz | 10-100 Hz | ⚠️ |
-| `/scan` | 7-9 Hz | 10 Hz | ⚠️ |
-| `/cmd_vel` | 20 Hz | 20 Hz | ✅ |
+
+| Topic          | Measured | Expected  | Status |
+| -------------- | -------- | --------- | ------ |
+| `/livox/lidar` | 10 Hz    | 10 Hz     | ✅      |
+| `/livox/imu`   | 200 Hz   | 200 Hz    | ✅      |
+| `/Odometry`    | 10 Hz    | 10-100 Hz | ⚠️     |
+| `/scan`        | 7-9 Hz   | 10 Hz     | ⚠️     |
+| `/cmd_vel`     | 20 Hz    | 20 Hz     | ✅      |
+
 
 ### 8.3 Latency measurements
 
-| Pipeline | Latency | Target | Status |
-|----------|---------|--------|--------|
-| `/cmd_vel` → Serial | 0.34 ms (median) | < 1 ms | ✅ |
-| Point cloud → LaserScan | 15 ms/frame | < 5 ms | ⚠️ |
-| End-to-end control | ~20 ms | < 50 ms | ✅ |
+
+| Pipeline                | Latency          | Target  | Status |
+| ----------------------- | ---------------- | ------- | ------ |
+| `/cmd_vel` → Serial     | 0.34 ms (median) | < 1 ms  | ✅      |
+| Point cloud → LaserScan | 15 ms/frame      | < 5 ms  | ⚠️     |
+| End-to-end control      | ~20 ms           | < 50 ms | ✅      |
+
 
 ### 8.4 Performance benchmarks
 
-| Metric | Good | Acceptable | Needs work |
-|--------|------|------------|------------|
-| Control latency | < 1 ms | 1–5 ms | > 5 ms |
-| Cloud to scan | < 5 ms | 5–20 ms | > 20 ms |
-| Frame drop rate | < 5% | 5–20% | > 20% |
-| CPU peak | < 50% | 50–80% | > 80% |
+
+| Metric          | Good   | Acceptable | Needs work |
+| --------------- | ------ | ---------- | ---------- |
+| Control latency | < 1 ms | 1–5 ms     | > 5 ms     |
+| Cloud to scan   | < 5 ms | 5–20 ms    | > 20 ms    |
+| Frame drop rate | < 5%   | 5–20%      | > 20%      |
+| CPU peak        | < 50%  | 50–80%     | > 80%      |
+
 
 ### 8.5 Debugging commands
 
@@ -644,12 +683,14 @@ python3 serial_sender.py --port /dev/ttyACM0 --vx 0.1 --duration 1.0
 
 ### 10.1 LiDAR selection summary
 
-| Aspect | Mid-360 | Unitree L2 |
-|--------|---------|------------|
-| Time sync | ✅ CustomMsg with offset_time | ⚠️ Standard PointCloud2 |
-| IMU stability | ✅ Stable | ⚠️ Noisy on gimbal |
-| Tilted mount | ✅ Works with TF rotation | ⚠️ IMU drift issues |
-| Production ready | ✅ Yes | ⚠️ Experimental |
+
+| Aspect           | Mid-360                      | Unitree L2              |
+| ---------------- | ---------------------------- | ----------------------- |
+| Time sync        | ✅ CustomMsg with offset_time | ⚠️ Standard PointCloud2 |
+| IMU stability    | ✅ Stable                     | ⚠️ Noisy on gimbal      |
+| Tilted mount     | ✅ Works with TF rotation     | ⚠️ IMU drift issues     |
+| Production ready | ✅ Yes                        | ⚠️ Experimental         |
+
 
 **Conclusion:** Mid-360 wins on time sync and IMU stability; **it is the primary LiDAR**. Unitree L2 remains experimental until further study.
 
@@ -661,10 +702,12 @@ python3 serial_sender.py --port /dev/ttyACM0 --vx 0.1 --duration 1.0
 
 **Config:** `unilidar_sdk2/unitree_lidar_ros2/launch/launch.py`
 
-| Type | Configuration | Notes |
-|------|---------------|----------|
-| **USB serial** | `serial_port: '/dev/ttyACM0'`, `initialize_type: 2` | Direct USB |
-| **Ethernet UDP** | `lidar_ip: '10.10.10.10'`, `initialize_type: 1` | Needs static IP |
+
+| Type             | Configuration                                       | Notes           |
+| ---------------- | --------------------------------------------------- | --------------- |
+| **USB serial**   | `serial_port: '/dev/ttyACM0'`, `initialize_type: 2` | Direct USB      |
+| **Ethernet UDP** | `lidar_ip: '10.10.10.10'`, `initialize_type: 1`     | Needs static IP |
+
 
 ```bash
 ls /dev/ttyACM*
@@ -693,15 +736,17 @@ sudo chmod 777 /dev/ttyACM0
 
 **Config:** `~/nav_ws/src/point_lio_ros2/config/unilidar.yaml`
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `start_in_aggressive_motion` | `true` | Use preset gravity to avoid IMU divergence |
-| `gravity_init` | `[0.0, 0.0, -9.810]` | Preset gravity |
-| `extrinsic_est_en` | `false` | Off for aggressive motion |
-| `acc_norm` | `10.2` | Expected linear accel from `ros2 topic echo /unilidar/imu` (m/s²) |
-| `b_acc_cov` / `b_gyr_cov` | `0.0001` | Bias covariance |
-| `imu_meas_acc_cov` | `0.1` | Accel measurement noise |
-| `imu_meas_omg_cov` | `0.1` | Gyro measurement noise |
+
+| Parameter                    | Value                | Description                                                       |
+| ---------------------------- | -------------------- | ----------------------------------------------------------------- |
+| `start_in_aggressive_motion` | `true`               | Use preset gravity to avoid IMU divergence                        |
+| `gravity_init`               | `[0.0, 0.0, -9.810]` | Preset gravity                                                    |
+| `extrinsic_est_en`           | `false`              | Off for aggressive motion                                         |
+| `acc_norm`                   | `10.2`               | Expected linear accel from `ros2 topic echo /unilidar/imu` (m/s²) |
+| `b_acc_cov` / `b_gyr_cov`    | `0.0001`             | Bias covariance                                                   |
+| `imu_meas_acc_cov`           | `0.1`                | Accel measurement noise                                           |
+| `imu_meas_omg_cov`           | `0.1`                | Gyro measurement noise                                            |
+
 
 **Extrinsic rotation warning:**
 
@@ -714,11 +759,13 @@ extrinsic_R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
 
 **Launch tuning:** `~/nav_ws/src/point_lio_ros2/launch/mapping_unilidar_l2.launch.py`
 
-| Parameter | NUC | Jetson | Description |
-|-----------|-----|--------|-------------|
-| `point_filter_num` | 3 | 1 | Point decimation |
-| `filter_size_surf` | 0.5 | 0.3 | Surface filter size |
-| `filter_size_map` | 0.5 | 0.3 | Map filter size |
+
+| Parameter          | NUC | Jetson | Description         |
+| ------------------ | --- | ------ | ------------------- |
+| `point_filter_num` | 3   | 1      | Point decimation    |
+| `filter_size_surf` | 0.5 | 0.3    | Surface filter size |
+| `filter_size_map`  | 0.5 | 0.3    | Map filter size     |
+
 
 > Match CPU headroom to avoid timestamp issues and “queue is full”. Defaults are fine on NUC; lower on Jetson.
 
@@ -762,7 +809,7 @@ extrinsic_R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
 xfer_format = 1   # 0 PointCloud2 (PointXYZRTL), 1 Livox CustomMsg
 ```
 
-> Prefer **`xfer_format = 1` (CustomMsg)** for `offset_time` and better time sync. PointCloud2 mode can run FastLIO but often triggers missing-parameter warnings from the Livox launch—CustomMsg is the supported path.
+> Prefer `**xfer_format = 1` (CustomMsg)** for `offset_time` and better time sync. PointCloud2 mode can run FastLIO but often triggers missing-parameter warnings from the Livox launch—CustomMsg is the supported path.
 
 ---
 
@@ -772,11 +819,13 @@ Many teams tilt the lidar on the gimbal for coverage; that tilts `camera_init` c
 
 **Mitigation:**
 
-| Step | Action |
-|------|--------|
-| 1 | Static TF `body` → `base_link` pitch −50° |
-| 2 | Run `rotate_pcd.py` on saved PCD before `pcd2pgm` |
-| 3 | Avoid extrinsic rotation hacks inside Point-LIO for this case |
+
+| Step | Action                                                        |
+| ---- | ------------------------------------------------------------- |
+| 1    | Static TF `body` → `base_link` pitch −50°                     |
+| 2    | Run `rotate_pcd.py` on saved PCD before `pcd2pgm`             |
+| 3    | Avoid extrinsic rotation hacks inside Point-LIO for this case |
+
 
 ```bash
 ros2 run tf2_ros static_transform_publisher 0 0 0 0 -0.873 0 body base_link
@@ -817,21 +866,19 @@ Nav2 parameters live in `my_nav2_params.yaml`. Observed indoors (5×5 m):
 
 ---
 
-<a id="108-nyush-hardware-navigation-prerequisites"></a>
-
 ### 10.8 NYUSH hardware navigation prerequisites
 
-Unlike **“comms only”**, a **closed navigation loop** needs the **arena to match the loaded 2D map** (field **`RMUL2026`**, lab **`11_map`**, etc.—see [README_COMMANDS.md](README_COMMANDS.md) **§4.4** for swaps). **Recommended:** prove `navigate_to_pose` and BT branches in **§6.4 Gazebo** on **`RMUL2026`**, then execute this hardware checklist.
+Unlike **“comms only”**, a **closed navigation loop** needs the **arena to match the loaded 2D map** (field `**RMUL2026`**, lab `**11_map`**, etc.—see [README_COMMANDS.md](README_COMMANDS.md) §4.4 for swaps). Recommended: prove `navigate_to_pose` and BT branches in §6.4 Gazebo on `**RMUL2026**`, then execute this hardware checklist.
 
 **Stable chain:**
 
-- **`map` → `odom` → `base_link`** with sane lidar inputs and localization (no wild jumps).
+- `**map` → `odom` → `base_link`** with sane lidar inputs and localization (no wild jumps).
 
 **Minimum on the robot:**
 
-- **`navigate_to_pose` action server online** (otherwise BT **`SendGoal`** cannot close); check `ros2 action list | grep navigate_to_pose` (full steps [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12)).
+- `**navigate_to_pose` action server online** (otherwise BT `**SendGoal`** cannot close); check `ros2 action list | grep navigate_to_pose` (full steps [README_COMMANDS.md §12](README_COMMANDS.md#readme-commands-section-12)).
 - **RViz** pose roughly matches the map; local **costmap** is not ballooning pathologically.
-- **`Home` / center hold poses** sit in **free space** on the occupancy grid; origin/orientation mismatches often look like “Nav2 is broken” when the map is wrong.
+- `**Home` / center hold poses** sit in **free space** on the occupancy grid; origin/orientation mismatches often look like “Nav2 is broken” when the map is wrong.
 
 **Phasing:** bench → small mapped area → full field for center/hold/home. Without a matching field, do not claim **hardware Nav2 is fully validated**.
 
@@ -841,26 +888,28 @@ Unlike **“comms only”**, a **closed navigation loop** needs the **arena to m
 
 ## 11. Future plans
 
-- [ ] Automatic initialization for Unitree L2
-- [ ] IMU calibration procedure
-- [ ] Dynamic obstacle avoidance improvements
-- [ ] Battery monitoring via ROS
-- [ ] Multi-floor navigation
-- [ ] Web-based monitoring dashboard
-- [ ] Automatic recovery behaviors
-- [ ] Further LiDAR evaluation for radar-station layouts
+- Automatic initialization for Unitree L2
+- IMU calibration procedure
+- Dynamic obstacle avoidance improvements
+- Battery monitoring via ROS
+- Multi-floor navigation
+- Web-based monitoring dashboard
+- Automatic recovery behaviors
+- Further LiDAR evaluation for radar-station layouts
 
 ---
 
 ## 12. References
 
 ### Official documentation
+
 - [Livox Mid-360 Manual](https://www.livoxtech.com/mid-360/downloads)
 - [FAST-LIO GitHub](https://github.com/hku-mars/FAST_LIO)
 - [Nav2 Documentation](https://docs.nav2.org/)
 - [ROS 2 Humble Documentation](https://docs.ros.org/en/humble/)
 
 ### Related projects
+
 - [Sentry Chassis Control](https://github.com/NYUSH-Robotics-Club/robomaster-control/tree/alan_sentry_radar)
 - [Livox ROS Driver 2](https://github.com/Livox-SDK/livox_ros_driver2)
 - [Point-LIO](https://github.com/hku-mars/Point-LIO)
@@ -881,7 +930,7 @@ If you find bugs or have suggestions:
 
 1. Open an issue in the repository
 2. Fork and open a pull request
-3. Contact: Yanheng Zhu (yz11502@nyu.edu)
+3. Contact: Yanheng Zhu ([yz11502@nyu.edu](mailto:yz11502@nyu.edu))
 
 ---
 
@@ -903,4 +952,4 @@ This project integrates multiple open-source components:
 
 **Last updated:** January 2025  
 **Maintained by:** Yanheng Zhu  
-**Contact:** yz11502@nyu.edu
+**Contact:** [yz11502@nyu.edu](mailto:yz11502@nyu.edu)

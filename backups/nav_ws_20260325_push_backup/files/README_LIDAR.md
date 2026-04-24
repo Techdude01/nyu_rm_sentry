@@ -1,9 +1,10 @@
 # RoboMaster Sentry Autonomous Navigation System
+
 # RoboMaster 哨兵自主导航系统
 
-[![ROS2 Humble](https://img.shields.io/badge/ROS2-Humble-blue)](https://docs.ros.org/en/humble/)
-[![Ubuntu 22.04](https://img.shields.io/badge/Ubuntu-22.04-orange)](https://ubuntu.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[ROS2 Humble](https://docs.ros.org/en/humble/)
+[Ubuntu 22.04](https://ubuntu.com/)
+[License: MIT](LICENSE)
 
 > **Autonomous navigation solution for RoboMaster Sentry robot using LiDAR SLAM and Nav2**  
 > **基于激光雷达SLAM与Nav2的RoboMaster哨兵机器人自主导航解决方案**
@@ -12,20 +13,22 @@
 
 ## Table of Contents / 目录
 
-| Section | 章节 |
-|---------|------|
-| [1. Project Overview](#1-project-overview--项目概述) | 项目概述 |
-| [2. System Architecture](#2-system-architecture--系统架构) | 系统架构 |
+
+| Section                                                      | 章节   |
+| ------------------------------------------------------------ | ---- |
+| [1. Project Overview](#1-project-overview--项目概述)             | 项目概述 |
+| [2. System Architecture](#2-system-architecture--系统架构)       | 系统架构 |
 | [3. Hardware Configuration](#3-hardware-configuration--硬件配置) | 硬件配置 |
-| [4. Software Stack](#4-software-stack--软件栈) | 软件栈 |
-| [5. Installation Guide](#5-installation-guide--安装指南) | 安装指南 |
-| [6. Quick Start](#6-quick-start--快速启动) | 快速启动 |
-| [7. Configuration](#7-configuration--配置说明) | 配置说明 |
-| [8. Performance Metrics](#8-performance-metrics--性能指标) | 性能指标 |
-| [9. Troubleshooting](#9-troubleshooting--故障排除) | 故障排除 |
-| [10. Development Notes](#10-development-notes--开发笔记) | 开发笔记 |
-| [11. Future Plans](#11-future-plans--未来计划) | 未来计划 |
-| [12. References](#12-references--参考资料) | 参考资料 |
+| [4. Software Stack](#4-software-stack--软件栈)                  | 软件栈  |
+| [5. Installation Guide](#5-installation-guide--安装指南)         | 安装指南 |
+| [6. Quick Start](#6-quick-start--快速启动)                       | 快速启动 |
+| [7. Configuration](#7-configuration--配置说明)                   | 配置说明 |
+| [8. Performance Metrics](#8-performance-metrics--性能指标)       | 性能指标 |
+| [9. Troubleshooting](#9-troubleshooting--故障排除)               | 故障排除 |
+| [10. Development Notes](#10-development-notes--开发笔记)         | 开发笔记 |
+| [11. Future Plans](#11-future-plans--未来计划)                   | 未来计划 |
+| [12. References](#12-references--参考资料)                       | 参考资料 |
+
 
 ---
 
@@ -39,25 +42,29 @@ This project implements a complete autonomous navigation system for the RoboMast
 
 ### 1.2 Key Features / 核心功能
 
-| Feature | Description | 功能描述 |
-|---------|-------------|----------|
-| **SLAM** | Real-time 3D LiDAR odometry with FastLIO2/Point-LIO | 基于FastLIO2/Point-LIO的实时3D激光里程计 |
-| **Mapping** | 3D PCD to 2D PGM map conversion | 3D点云到2D栅格地图转换 |
-| **Navigation** | Nav2 global/local planning with DWB controller | Nav2全局/局部路径规划，DWB控制器 |
-| **Obstacle Avoidance** | Real-time static and dynamic obstacle detection | 实时静态/动态障碍物检测避障 |
-| **Chassis Control** | Serial communication with STM32 C-board | 串口通信控制STM32 C板底盘 |
+
+| Feature                | Description                                         | 功能描述                           |
+| ---------------------- | --------------------------------------------------- | ------------------------------ |
+| **SLAM**               | Real-time 3D LiDAR odometry with FastLIO2/Point-LIO | 基于FastLIO2/Point-LIO的实时3D激光里程计 |
+| **Mapping**            | 3D PCD to 2D PGM map conversion                     | 3D点云到2D栅格地图转换                  |
+| **Navigation**         | Nav2 global/local planning with DWB controller      | Nav2全局/局部路径规划，DWB控制器           |
+| **Obstacle Avoidance** | Real-time static and dynamic obstacle detection     | 实时静态/动态障碍物检测避障                 |
+| **Chassis Control**    | Serial communication with STM32 C-board             | 串口通信控制STM32 C板底盘               |
+
 
 ### 1.3 Performance Achieved / 已实现性能
 
 **Indoor Navigation (5×5m场地):**
 
-| Metric | Value | 指标 | 数值 |
-|--------|-------|------|------|
-| Cruise Speed | 0.2-0.26 m/s | 巡航速度 | 0.2-0.26 m/s |
-| Obstacle Clearance | ≥ 0.3 m | 避障距离 | ≥ 0.3 m |
-| Position Error | ≤ 0.2 m | 终点误差 | ≤ 0.2 m |
-| Success Rate | ≥ 90% (20 trials) | 成功率 | ≥ 90% (20次) |
-| Collision-free | Yes (5+ consecutive runs) | 无碰撞 | 是 (连续5次+) |
+
+| Metric             | Value                     | 指标   | 数值           |
+| ------------------ | ------------------------- | ---- | ------------ |
+| Cruise Speed       | 0.2-0.26 m/s              | 巡航速度 | 0.2-0.26 m/s |
+| Obstacle Clearance | ≥ 0.3 m                   | 避障距离 | ≥ 0.3 m      |
+| Position Error     | ≤ 0.2 m                   | 终点误差 | ≤ 0.2 m      |
+| Success Rate       | ≥ 90% (20 trials)         | 成功率  | ≥ 90% (20次)  |
+| Collision-free     | Yes (5+ consecutive runs) | 无碰撞  | 是 (连续5次+)    |
+
 
 ---
 
@@ -145,54 +152,63 @@ LiDAR (10Hz) ──▶ SLAM ──▶ /cloud_registered ──▶ /scan ──�
 
 ### 3.1 Computing Platform / 计算平台
 
-| Component | NUC 12 Pro (Primary) | Jetson Orin Nano (Backup) |
-|-----------|---------------------|---------------------------|
-| **组件** | **NUC 12 Pro (主力)** | **Jetson Orin Nano (备用)** |
-| CPU | Intel i7-1260P (16核) | ARM Cortex-A78AE (6核) |
-| RAM | 16 GB DDR4 | 8 GB LPDDR5 |
-| Storage | 512 GB NVMe SSD | 128 GB eMMC |
-| OS | Ubuntu 22.04 LTS | Ubuntu 22.04 (JetPack 6) |
-| Power | 19V DC | 9-20V DC |
+
+| Component   | NUC 12 Pro (Primary)     | Jetson Orin Nano (Backup)    |
+| ----------- | ------------------------ | ---------------------------- |
+| **组件**      | **NUC 12 Pro (主力)**      | **Jetson Orin Nano (备用)**    |
+| CPU         | Intel i7-1260P (16核)     | ARM Cortex-A78AE (6核)        |
+| RAM         | 16 GB DDR4               | 8 GB LPDDR5                  |
+| Storage     | 512 GB NVMe SSD          | 128 GB eMMC                  |
+| OS          | Ubuntu 22.04 LTS         | Ubuntu 22.04 (JetPack 6)     |
+| Power       | 19V DC                   | 9-20V DC                     |
 | Suitability | Full stack (recommended) | Edge computing, mapping only |
-| 适用场景 | 全栈运行 (推荐) | 边缘计算，仅建图 |
+| 适用场景        | 全栈运行 (推荐)                | 边缘计算，仅建图                     |
+
 
 ### 3.2 LiDAR Sensors / 激光雷达
 
-| Specification | Livox Mid-360 ✅ | Unitree L2 ⚠️ |
-|---------------|------------------|---------------|
-| **规格** | **Livox Mid-360 (推荐)** | **Unitree L2 (实验)** |
-| FOV | 360° × 59° | 360° × 90° |
-| Range | 40 m | 30 m |
-| Points/sec | 200,000 | 43,200 |
-| IMU | Built-in (stable) | Built-in (noisy on gimbal) |
-| Interface | Ethernet (UDP) | USB Serial (ttyACM0) |
-| Data Format | CustomMsg (offset_time) | PointCloud2 |
-| Time Sync | ✅ Excellent | ⚠️ Weak |
-| Tilted Mount | ✅ Supported | ⚠️ IMU drift issue |
-| Status | **Production Ready** | **Experimental** |
+
+| Specification | Livox Mid-360 ✅         | Unitree L2 ⚠️              |
+| ------------- | ----------------------- | -------------------------- |
+| **规格**        | **Livox Mid-360 (推荐)**  | **Unitree L2 (实验)**        |
+| FOV           | 360° × 59°              | 360° × 90°                 |
+| Range         | 40 m                    | 30 m                       |
+| Points/sec    | 200,000                 | 43,200                     |
+| IMU           | Built-in (stable)       | Built-in (noisy on gimbal) |
+| Interface     | Ethernet (UDP)          | USB Serial (ttyACM0)       |
+| Data Format   | CustomMsg (offset_time) | PointCloud2                |
+| Time Sync     | ✅ Excellent             | ⚠️ Weak                    |
+| Tilted Mount  | ✅ Supported             | ⚠️ IMU drift issue         |
+| Status        | **Production Ready**    | **Experimental**           |
+
 
 **Mid-360 Network Configuration / Mid-360 网络配置:**
+
 - 单雷达 (内置): LiDAR `192.168.1.182`, Host `192.168.1.2`, Ports 56101–56501
 - 单雷达 (USB): LiDAR `192.168.1.114`, Host `192.168.1.3`, Ports 56101–56501
 - 双雷达：双驱动 + 合并节点，详见 [10.4.1 双 Mid-360 配置](#1041-双-mid-360-配置--dual-mid-360-configuration)
 
 ### 3.3 Chassis Controller / 底盘控制器
 
-| Item | Specification | 规格 |
-|------|---------------|------|
-| Controller | STM32 C-Board (RoboMaster) | STM32 C板 |
-| Interface | UART via USB | USB转串口 |
-| Baud Rate | 115200 | 波特率 115200 |
-| Protocol | Binary (15 bytes) | 二进制协议 (15字节) |
-| Frame Format | `0xA5 0x5A [vx:4B] [vy:4B] [wz:4B] [CRC8]` | 帧格式 |
-| Port | `/dev/ttyACM0` | 设备端口 |
+
+| Item         | Specification                              | 规格           |
+| ------------ | ------------------------------------------ | ------------ |
+| Controller   | STM32 C-Board (RoboMaster)                 | STM32 C板     |
+| Interface    | UART via USB                               | USB转串口       |
+| Baud Rate    | 115200                                     | 波特率 115200   |
+| Protocol     | Binary (15 bytes)                          | 二进制协议 (15字节) |
+| Frame Format | `0xA5 0x5A [vx:4B] [vy:4B] [wz:4B] [CRC8]` | 帧格式          |
+| Port         | `/dev/ttyACM0`                             | 设备端口         |
+
 
 ### 3.4 Remote Access / 远程访问
 
-| Service | Port | Address | 用途 |
-|---------|------|---------|------|
-| SSH | 9913 | 42.192.208.124:9913 | Terminal access |
-| VNC | 9914 | 42.192.208.124:9914 | Desktop view |
+
+| Service | Port | Address             | 用途              |
+| ------- | ---- | ------------------- | --------------- |
+| SSH     | 9913 | 42.192.208.124:9913 | Terminal access |
+| VNC     | 9914 | 42.192.208.124:9914 | Desktop view    |
+
 
 ```bash
 # SSH login / SSH登录
@@ -208,17 +224,19 @@ VNC Viewer → 42.192.208.124:9914
 
 ### 4.1 Core Dependencies / 核心依赖
 
-| Package | Version | Purpose | 用途 |
-|---------|---------|---------|------|
-| ROS 2 | Humble | Middleware | 中间件 |
-| Nav2 | Humble | Navigation | 导航框架 |
-| FastLIO2 | Latest | SLAM (Mid-360) | 激光SLAM |
-| Point-LIO | ROS2 fork | SLAM (Unitree L2) | 激光SLAM |
-| livox_ros_driver2 | 1.2.4 | Mid-360 driver | Mid-360驱动 |
-| livox_dual_merge | 0.0.1 | Dual Mid-360 merge | 双 Mid-360 合并 |
-| unitree_lidar_ros2 | Latest | Unitree L2 driver | L2驱动 |
-| pcd2pgm | Latest | Map conversion | 地图转换 |
-| pointcloud_to_laserscan | Latest | 3D→2D scan | 点云转激光 |
+
+| Package                 | Version   | Purpose            | 用途           |
+| ----------------------- | --------- | ------------------ | ------------ |
+| ROS 2                   | Humble    | Middleware         | 中间件          |
+| Nav2                    | Humble    | Navigation         | 导航框架         |
+| FastLIO2                | Latest    | SLAM (Mid-360)     | 激光SLAM       |
+| Point-LIO               | ROS2 fork | SLAM (Unitree L2)  | 激光SLAM       |
+| livox_ros_driver2       | 1.2.4     | Mid-360 driver     | Mid-360驱动    |
+| livox_dual_merge        | 0.0.1     | Dual Mid-360 merge | 双 Mid-360 合并 |
+| unitree_lidar_ros2      | Latest    | Unitree L2 driver  | L2驱动         |
+| pcd2pgm                 | Latest    | Map conversion     | 地图转换         |
+| pointcloud_to_laserscan | Latest    | 3D→2D scan         | 点云转激光        |
+
 
 ### 4.2 Workspace Structure / 工作空间结构
 
@@ -250,15 +268,17 @@ VNC Viewer → 42.192.208.124:9914
 
 ### 4.3 Key ROS2 Topics / 核心话题
 
-| Topic | Type | Frequency | Description |
-|-------|------|-----------|-------------|
-| `/livox/lidar` | CustomMsg | 10 Hz | Raw point cloud |
-| `/livox/imu` | Imu | 200 Hz | IMU data |
-| `/Odometry` | Odometry | 10 Hz | Pose from SLAM |
-| `/cloud_registered` | PointCloud2 | 10 Hz | Registered cloud |
-| `/scan` | LaserScan | 10 Hz | 2D laser scan |
-| `/cmd_vel` | Twist | 20 Hz | Velocity commands |
-| `/map` | OccupancyGrid | Static | Navigation map |
+
+| Topic               | Type          | Frequency | Description       |
+| ------------------- | ------------- | --------- | ----------------- |
+| `/livox/lidar`      | CustomMsg     | 10 Hz     | Raw point cloud   |
+| `/livox/imu`        | Imu           | 200 Hz    | IMU data          |
+| `/Odometry`         | Odometry      | 10 Hz     | Pose from SLAM    |
+| `/cloud_registered` | PointCloud2   | 10 Hz     | Registered cloud  |
+| `/scan`             | LaserScan     | 10 Hz     | 2D laser scan     |
+| `/cmd_vel`          | Twist         | 20 Hz     | Velocity commands |
+| `/map`              | OccupancyGrid | Static    | Navigation map    |
+
 
 ---
 
@@ -331,6 +351,7 @@ cd ~/nav_ws
 ```
 
 This script automatically: / 该脚本自动执行:
+
 1. Sources workspace / 加载工作空间
 2. Launches LiDAR driver / 启动雷达驱动
 3. Starts SLAM node / 启动SLAM节点
@@ -342,18 +363,21 @@ This script automatically: / 该脚本自动执行:
 ### 6.2 Manual Launch Steps / 手动启动步骤
 
 **Step 1: LiDAR Driver / 雷达驱动**
+
 ```bash
 cd ~/nav_ws && source install/setup.bash
 ros2 launch livox_ros_driver2 msg_MID360_launch.py
 ```
 
 **Step 2: SLAM / 激光SLAM**
+
 ```bash
 export LD_PRELOAD=/lib/x86_64-linux-gnu/libusb-1.0.so.0
 ros2 launch fast_lio mapping.launch.py config_file:=mid360.yaml
 ```
 
 **Step 3: TF Transforms / TF变换**
+
 ```bash
 ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom camera_init &
 ros2 run tf2_ros static_transform_publisher 0 0 0 0 -0.873 0 body base_link &
@@ -361,6 +385,7 @@ ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link base_footprint
 ```
 
 **Step 4: Point Cloud to LaserScan / 点云转激光**
+
 ```bash
 ros2 run pointcloud_to_laserscan pointcloud_to_laserscan_node --ros-args \
   -p target_frame:=base_link \
@@ -370,6 +395,7 @@ ros2 run pointcloud_to_laserscan pointcloud_to_laserscan_node --ros-args \
 ```
 
 **Step 5: Nav2 / 导航**
+
 ```bash
 ros2 launch nav2_bringup bringup_launch.py \
     use_sim_time:=False \
@@ -378,6 +404,7 @@ ros2 launch nav2_bringup bringup_launch.py \
 ```
 
 **Step 6: Chassis Control / 底盘控制**
+
 ```bash
 sudo chmod 777 /dev/ttyACM0
 python3 serial_sender.py --port /dev/ttyACM0 --ros2
@@ -410,21 +437,25 @@ ros2 run nav2_map_server map_saver_cli -f /home/nyu/Desktop/map/my_map
 
 Location / 路径: `~/nav_ws/my_nav2_params.yaml`
 
-| Parameter | Value | Description | 说明 |
-|-----------|-------|-------------|------|
-| `max_vel_x` | 0.26 m/s | Max forward speed | 最大前进速度 |
-| `max_vel_y` | 0.26 m/s | Max lateral speed | 最大横移速度 |
-| `max_vel_theta` | 0.0 rad/s | Rotation disabled | 禁用旋转 |
-| `acc_lim_x/y` | 2.5 m/s² | Acceleration limit | 加速度限制 |
-| `min_speed_xy` | 0.05 m/s | Min speed (deadband) | 最小速度 (死区) |
-| `controller_frequency` | 10.0 Hz | Control loop rate | 控制频率 |
+
+| Parameter              | Value     | Description          | 说明        |
+| ---------------------- | --------- | -------------------- | --------- |
+| `max_vel_x`            | 0.26 m/s  | Max forward speed    | 最大前进速度    |
+| `max_vel_y`            | 0.26 m/s  | Max lateral speed    | 最大横移速度    |
+| `max_vel_theta`        | 0.0 rad/s | Rotation disabled    | 禁用旋转      |
+| `acc_lim_x/y`          | 2.5 m/s²  | Acceleration limit   | 加速度限制     |
+| `min_speed_xy`         | 0.05 m/s  | Min speed (deadband) | 最小速度 (死区) |
+| `controller_frequency` | 10.0 Hz   | Control loop rate    | 控制频率      |
+
 
 ### 7.2 FastLIO Parameters / FastLIO参数
 
-| 配置 | 路径 | 用途 |
-|------|------|------|
+
+| 配置  | 路径                          | 用途                                               |
+| --- | --------------------------- | ------------------------------------------------ |
 | 单雷达 | `config/mid360_single.yaml` | msg_MID360_launch.py → CustomMsg → lidar_type: 1 |
-| 双雷达 | `config/mid360_dual.yaml` | 双驱动+merge → PointCloud2 → lidar_type: 0 |
+| 双雷达 | `config/mid360_dual.yaml`   | 双驱动+merge → PointCloud2 → lidar_type: 0          |
+
 
 ```yaml
 # mid360_single.yaml（单雷达）
@@ -463,40 +494,48 @@ Location / 路径: `~/nav_ws/src/livox_ros_driver2/config/MID360_config.json`
 
 **Platform: NUC 12 Pro (i7-1260P, 16GB RAM)**
 
-| Metric | Value | 指标 | 数值 |
-|--------|-------|------|------|
-| CPU Peak | ~40% | CPU峰值 | ~40% |
-| CPU Average | ~36% | CPU均值 | ~36% |
-| Memory | ~6.3 GB | 内存 | ~6.3 GB |
-| Network RX | ~3.15 MB/s | 网络接收 | ~3.15 MB/s |
+
+| Metric      | Value      | 指标    | 数值         |
+| ----------- | ---------- | ----- | ---------- |
+| CPU Peak    | ~40%       | CPU峰值 | ~40%       |
+| CPU Average | ~36%       | CPU均值 | ~36%       |
+| Memory      | ~6.3 GB    | 内存    | ~6.3 GB    |
+| Network RX  | ~3.15 MB/s | 网络接收  | ~3.15 MB/s |
+
 
 ### 8.2 Topic Frequencies / 话题频率
 
-| Topic | Measured | Expected | Status |
-|-------|----------|----------|--------|
-| `/livox/lidar` | 10 Hz | 10 Hz | ✅ |
-| `/livox/imu` | 200 Hz | 200 Hz | ✅ |
-| `/Odometry` | 10 Hz | 10-100 Hz | ⚠️ |
-| `/scan` | 7-9 Hz | 10 Hz | ⚠️ |
-| `/cmd_vel` | 20 Hz | 20 Hz | ✅ |
+
+| Topic          | Measured | Expected  | Status |
+| -------------- | -------- | --------- | ------ |
+| `/livox/lidar` | 10 Hz    | 10 Hz     | ✅      |
+| `/livox/imu`   | 200 Hz   | 200 Hz    | ✅      |
+| `/Odometry`    | 10 Hz    | 10-100 Hz | ⚠️     |
+| `/scan`        | 7-9 Hz   | 10 Hz     | ⚠️     |
+| `/cmd_vel`     | 20 Hz    | 20 Hz     | ✅      |
+
 
 ### 8.3 Latency Measurements / 延迟测量
 
-| Pipeline | Latency | Target | Status |
-|----------|---------|--------|--------|
-| `/cmd_vel` → Serial | 0.34 ms (median) | < 1 ms | ✅ |
-| Point cloud → LaserScan | 15 ms/frame | < 5 ms | ⚠️ |
-| End-to-end control | ~20 ms | < 50 ms | ✅ |
+
+| Pipeline                | Latency          | Target  | Status |
+| ----------------------- | ---------------- | ------- | ------ |
+| `/cmd_vel` → Serial     | 0.34 ms (median) | < 1 ms  | ✅      |
+| Point cloud → LaserScan | 15 ms/frame      | < 5 ms  | ⚠️     |
+| End-to-end control      | ~20 ms           | < 50 ms | ✅      |
+
 
 ### 8.4 Performance Benchmarks / 性能基准
 
-| Metric | Good | Acceptable | Needs Work |
-|--------|------|------------|------------|
-| **指标** | **良好** | **可接受** | **需优化** |
-| Control latency | < 1 ms | 1-5 ms | > 5 ms |
-| Cloud→Scan | < 5 ms | 5-20 ms | > 20 ms |
-| Frame drop rate | < 5% | 5-20% | > 20% |
-| CPU peak | < 50% | 50-80% | > 80% |
+
+| Metric          | Good   | Acceptable | Needs Work |
+| --------------- | ------ | ---------- | ---------- |
+| **指标**          | **良好** | **可接受**    | **需优化**    |
+| Control latency | < 1 ms | 1-5 ms     | > 5 ms     |
+| Cloud→Scan      | < 5 ms | 5-20 ms    | > 20 ms    |
+| Frame drop rate | < 5%   | 5-20%      | > 20%      |
+| CPU peak        | < 50%  | 50-80%     | > 80%      |
+
 
 ### 8.5 Debugging Commands / 调试命令
 
@@ -521,6 +560,7 @@ ros2 run tf2_tools view_frames
 ### 9.1 Common Issues / 常见问题
 
 #### Issue 1: No LiDAR Data / 无雷达数据
+
 **Symptoms / 症状:** `❌ 未检测到雷达数据`
 
 ```bash
@@ -535,6 +575,7 @@ sudo ufw disable
 ```
 
 #### Issue 2: TF Transform Errors / TF变换错误
+
 **Symptoms / 症状:** `Transform from map to base_link failed`
 
 ```bash
@@ -546,15 +587,18 @@ ros2 run tf2_ros tf2_echo map base_link
 ```
 
 #### Issue 3: AMCL Message Filter Dropping / AMCL消息丢弃
+
 **Symptoms / 症状:** `Message Filter dropping message`
 
 **Solutions / 解决方案:**
+
 - Increase `queue_size` in AMCL config / 增大队列大小
 - Increase `transform_tolerance` / 增大变换容忍度
 - Reduce `/scan` frequency / 降低扫描频率
 - Check system time sync / 检查系统时间同步
 
 #### Issue 4: Serial Port Failed / 串口通信失败
+
 **Symptoms / 症状:** `Failed to open serial port`
 
 ```bash
@@ -569,6 +613,7 @@ python3 serial_sender.py --port /dev/ttyACM0 --vx 0.1 --duration 1.0
 ```
 
 #### Issue 5: Dual Mid-360 Only One LiDAR Connects / 双雷达只连上一台
+
 **Symptoms / 症状:** 双驱动方案下，某台雷达无点云输出；或驱动 2 连上了 182 而非 114
 
 **Step 1: 启动前必须 Ping 通两台雷达**
@@ -586,6 +631,7 @@ ping -c 2 -I 192.168.1.3 192.168.1.114   # 应 0% packet loss
 ```
 
 若 `192.168.1.114` 返回 `Destination Host Unreachable` 或 100% packet loss：
+
 - 114 未上电、USB 网口未接好、或 USB 转以太网适配器异常
 - **此时不要启动双雷达**，驱动 2 可能错误连上 182，导致两路都是 182 数据
 
@@ -600,22 +646,28 @@ ros2 topic hz /livox/lidar /livox/lidar_1 /livox/lidar_2
 ```
 
 **Solutions / 解决方案:**
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| Ping 114 失败 | 114 未上电、USB 线未接、网口未配 | 检查硬件、重新配置 `192.168.1.3` |
-| 驱动 2 连上 182 而非 114 | 114 不可达，驱动发现 182 后连上 | 先解决 114 网络，再重启驱动 |
-| 路由/网口错 | 182 走了 USB、114 走了内置 | 确认 `ip route` 指向正确网口 |
+
+
+| 现象                 | 可能原因                 | 处理                      |
+| ------------------ | -------------------- | ----------------------- |
+| Ping 114 失败        | 114 未上电、USB 线未接、网口未配 | 检查硬件、重新配置 `192.168.1.3` |
+| 驱动 2 连上 182 而非 114 | 114 不可达，驱动发现 182 后连上 | 先解决 114 网络，再重启驱动        |
+| 路由/网口错             | 182 走了 USB、114 走了内置  | 确认 `ip route` 指向正确网口    |
+
 
 - 确认两个驱动进程均在运行：`pgrep -a livox_ros_driver2`
 - 若 "found lidar not defined in user-defined config" 可忽略，每驱动仅配置一台雷达
 
 #### Issue 6: Localization Loss on Gimbal Rotation / 云台旋转时定位丢失
+
 **Causes / 原因:**
+
 - IMU saturation / IMU量程饱和
 - Extrinsic calibration error / 外参标定误差
 - Time synchronization drift / 时间同步偏差
 
 **Solutions / 解决方案:**
+
 - Reduce gimbal rotation speed / 降低云台转速
 - Use higher range IMU / 使用更大量程IMU
 - Recalibrate extrinsics / 重新标定外参
@@ -629,12 +681,14 @@ ros2 topic hz /livox/lidar /livox/lidar_1 /livox/lidar_2
 
 ### 10.1 LiDAR Selection Summary / 雷达选型总结
 
-| Aspect | Mid-360 | Unitree L2 |
-|--------|---------|------------|
-| Time sync | ✅ CustomMsg with offset_time | ⚠️ Standard PointCloud2 |
-| IMU stability | ✅ Stable | ⚠️ Noisy on gimbal |
-| Tilted mount | ✅ Works with TF rotation | ⚠️ IMU drift issues |
-| Production ready | ✅ Yes | ⚠️ Experimental |
+
+| Aspect           | Mid-360                      | Unitree L2              |
+| ---------------- | ---------------------------- | ----------------------- |
+| Time sync        | ✅ CustomMsg with offset_time | ⚠️ Standard PointCloud2 |
+| IMU stability    | ✅ Stable                     | ⚠️ Noisy on gimbal      |
+| Tilted mount     | ✅ Works with TF rotation     | ⚠️ IMU drift issues     |
+| Production ready | ✅ Yes                        | ⚠️ Experimental         |
+
 
 **Conclusion / 结论:** Mid-360在时间同步、IMU稳定性等方面表现更优，**目前采用Mid-360作为主力雷达**。宇树L2需要进一步研究后再投入使用。
 
@@ -646,10 +700,12 @@ ros2 topic hz /livox/lidar /livox/lidar_1 /livox/lidar_2
 
 **Config File / 配置文件:** `unilidar_sdk2/unitree_lidar_ros2/launch/launch.py`
 
-| Type | Configuration | 配置说明 |
-|------|---------------|----------|
-| **USB Serial** | `serial_port: '/dev/ttyACM0'`, `initialize_type: 2` | USB串口连接 |
-| **Ethernet UDP** | `lidar_ip: '10.10.10.10'`, `initialize_type: 1` | 网线连接，需配置静态IP |
+
+| Type             | Configuration                                       | 配置说明         |
+| ---------------- | --------------------------------------------------- | ------------ |
+| **USB Serial**   | `serial_port: '/dev/ttyACM0'`, `initialize_type: 2` | USB串口连接      |
+| **Ethernet UDP** | `lidar_ip: '10.10.10.10'`, `initialize_type: 1`     | 网线连接，需配置静态IP |
+
 
 ```bash
 # Check USB port / 检查USB端口
@@ -659,20 +715,18 @@ ls /dev/ttyACM*
 #### 10.2.2 Known Issues / 已知问题
 
 1. **Dynamic Balance & IMU Issues / 动平衡与IMU问题:**
-   - 宇树雷达的动平衡以及IMU存在问题
-   - 点云在初始化时可能旋转或飞走
-   - 根据宇树官方手册可增大 `cloud_scan_num` 到72（用更多scan来自身定位，但效果不明显）
-   - 需要进一步调试
-
+  - 宇树雷达的动平衡以及IMU存在问题
+  - 点云在初始化时可能旋转或飞走
+  - 根据宇树官方手册可增大 `cloud_scan_num` 到72（用更多scan来自身定位，但效果不明显）
+  - 需要进一步调试
 2. **IMU Acceleration Instability / 加速度不稳定:**
-   - 正常条件下应稳定在 ~9.8 m/s² (`acc_norm: 10.2`)
-   - **一旦加速度突变会导致点云飞走**
-   - 安装到云台或底盘按墙壁时加速度突变到 ~14 m/s²
-   - 这是倾斜安装的主要障碍
-
+  - 正常条件下应稳定在 ~9.8 m/s² (`acc_norm: 10.2`)
+  - **一旦加速度突变会导致点云飞走**
+  - 安装到云台或底盘按墙壁时加速度突变到 ~14 m/s²
+  - 这是倾斜安装的主要障碍
 3. **Point Cloud Spinning / 点云旋转:**
-   - 动平衡不足导致
-   - 增大 `cloud_scan_num` 效果有限
+  - 动平衡不足导致
+  - 增大 `cloud_scan_num` 效果有限
 
 #### 10.2.3 Debugging Commands / 调试命令
 
@@ -694,17 +748,20 @@ sudo chmod 777 /dev/ttyACM0
 
 **Config File / 配置文件:** `~/nav_ws/src/point_lio_ros2/config/unilidar.yaml`
 
-| Parameter | Value | Description | 说明 |
-|-----------|-------|-------------|------|
-| `start_in_aggressive_motion` | `true` | 建议设为true，使用预设重力方向，避免使用IMU导致飞走 | Use preset gravity |
-| `gravity_init` | `[0.0, 0.0, -9.810]` | 预设重力方向 | Preset gravity |
-| `extrinsic_est_en` | `false` | 用于aggressive motion时设为false | Disable for aggressive motion |
-| `acc_norm` | `10.2` | `ros2 topic echo /unilidar/imu` linear acceleration应稳定在的读数 (m/s²) | Expected acceleration |
-| `b_acc_cov` / `b_gyr_cov` | `0.0001` | 偏置协方差，可适当调高但效果不明显 | Bias covariance |
-| `imu_meas_acc_cov` | `0.1` | IMU加速度测量协方差 | IMU measurement covariance |
-| `imu_meas_omg_cov` | `0.1` | IMU角速度测量协方差 | IMU measurement covariance |
+
+| Parameter                    | Value                | Description                                                       | 说明                            |
+| ---------------------------- | -------------------- | ----------------------------------------------------------------- | ----------------------------- |
+| `start_in_aggressive_motion` | `true`               | 建议设为true，使用预设重力方向，避免使用IMU导致飞走                                     | Use preset gravity            |
+| `gravity_init`               | `[0.0, 0.0, -9.810]` | 预设重力方向                                                            | Preset gravity                |
+| `extrinsic_est_en`           | `false`              | 用于aggressive motion时设为false                                       | Disable for aggressive motion |
+| `acc_norm`                   | `10.2`               | `ros2 topic echo /unilidar/imu` linear acceleration应稳定在的读数 (m/s²) | Expected acceleration         |
+| `b_acc_cov` / `b_gyr_cov`    | `0.0001`             | 偏置协方差，可适当调高但效果不明显                                                 | Bias covariance               |
+| `imu_meas_acc_cov`           | `0.1`                | IMU加速度测量协方差                                                       | IMU measurement covariance    |
+| `imu_meas_omg_cov`           | `0.1`                | IMU角速度测量协方差                                                       | IMU measurement covariance    |
+
 
 **⚠️ Extrinsic Rotation Warning / 外参旋转警告:**
+
 ```yaml
 # 虽然网上通常以此方法作为倾斜安装的解决方案，但不推荐使用！
 extrinsic_T: [0.007698, 0.014655, -0.00667]
@@ -716,11 +773,13 @@ extrinsic_R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
 **Launch File Tuning / Launch文件调参:**  
 `~/nav_ws/src/point_lio_ros2/launch/mapping_unilidar_l2.launch.py`
 
-| Parameter | NUC (推荐) | Jetson | Description |
-|-----------|------------|--------|-------------|
-| `point_filter_num` | 3 | 1 | 点云降采样 |
-| `filter_size_surf` | 0.5 | 0.3 | 表面滤波尺寸 |
-| `filter_size_map` | 0.5 | 0.3 | 地图滤波尺寸 |
+
+| Parameter          | NUC (推荐) | Jetson | Description |
+| ------------------ | -------- | ------ | ----------- |
+| `point_filter_num` | 3        | 1      | 点云降采样       |
+| `filter_size_surf` | 0.5      | 0.3    | 表面滤波尺寸      |
+| `filter_size_map`  | 0.5      | 0.3    | 地图滤波尺寸      |
+
 
 > 根据CPU处理能力调整，避免时间戳问题和 "the queue is full" 错误。NUC可保持默认配置，Jetson建议降低。
 
@@ -765,9 +824,9 @@ xfer_format = 1   # 0-Pointcloud2(PointXYZRTL), 1-customized pointcloud format
 ```
 
 > ✅ **推荐使用 `xfer_format = 1` (CustomMsg)**  
-> 
+>
 > Mid-360的优势在于不同于一般雷达的PointCloud2，其使用了customized pointcloud format，提供了offset_time等参数的时间戳同步。
-> 
+>
 > 经测试如果在这里使用PointCloud2可选项，虽然可以跑通FastLIO，但会出现missing message报错——这是Mid-360 launch正在寻找其他Mid-360提供的参数的提示。推荐使用customized pointcloud以充分发挥优势。
 
 ---
@@ -782,6 +841,7 @@ xfer_format = 1   # 0-Pointcloud2(PointXYZRTL), 1-customized pointcloud format
 使用单驱动 + `host_net_info` 数组配置双雷达时，**只有第一个 `host_net_info` 对应的雷达能成功连接**，第二台雷达的 `LidarInfoChangeCallback` 不触发，无法完成初始化。
 
 **诊断结果 / Diagnosis:**
+
 - 两组 UDP 端口 (56101–56401, 56102–56402) 均已正确绑定，网络正常
 - 调整 `host_net_info` 顺序后，只有排第一的雷达能连上
 - 结论：Livox SDK2 在单进程内对第二台雷达的发现/连接流程存在限制或 bug
@@ -790,12 +850,14 @@ xfer_format = 1   # 0-Pointcloud2(PointXYZRTL), 1-customized pointcloud format
 
 #### 10.4.1.2 网络与硬件拓扑 / Network Topology
 
-| 项目 | 雷达 1 (182) | 雷达 2 (114) |
-|------|--------------|--------------|
-| **网口** | 内置以太网 enp114s0 | USB 转以太网 enx00e04c2536b0 |
-| **雷达 IP** | 192.168.1.182 | 192.168.1.114 |
-| **主机 IP** | 192.168.1.2 | 192.168.1.3 |
-| **网段** | 192.168.1.0/24 | 192.168.1.0/24 |
+
+| 项目        | 雷达 1 (182)     | 雷达 2 (114)               |
+| --------- | -------------- | ------------------------ |
+| **网口**    | 内置以太网 enp114s0 | USB 转以太网 enx00e04c2536b0 |
+| **雷达 IP** | 192.168.1.182  | 192.168.1.114            |
+| **主机 IP** | 192.168.1.2    | 192.168.1.3              |
+| **网段**    | 192.168.1.0/24 | 192.168.1.0/24           |
+
 
 **注意：** 两个网口同网段时，必须添加显式路由，否则发包会走错网口：
 
@@ -829,14 +891,16 @@ sudo ip route add 192.168.1.182/32 dev enp114s0
 
 #### 10.4.1.4 相关文件 / File Structure
 
-| 路径 | 说明 |
-|------|------|
-| `src/livox_ros_driver2/config/MID360_config.json` | 单雷达 182 配置 (内置网口) |
-| `src/livox_ros_driver2/config/MID360_usb_config.json` | 单雷达 114 配置 (USB 网口) |
-| `src/livox_dual_merge/` | 双雷达合并包 |
-| `src/livox_dual_merge/launch/dual_lidar_merge_launch.py` | 双驱动 + 合并 Launch |
-| `test_dual_lidar.sh` | 一键双雷达启动脚本 |
-| `diagnose_dual_lidar.sh` | 双雷达网络/端口诊断脚本 |
+
+| 路径                                                       | 说明                  |
+| -------------------------------------------------------- | ------------------- |
+| `src/livox_ros_driver2/config/MID360_config.json`        | 单雷达 182 配置 (内置网口)   |
+| `src/livox_ros_driver2/config/MID360_usb_config.json`    | 单雷达 114 配置 (USB 网口) |
+| `src/livox_dual_merge/`                                  | 双雷达合并包              |
+| `src/livox_dual_merge/launch/dual_lidar_merge_launch.py` | 双驱动 + 合并 Launch     |
+| `test_dual_lidar.sh`                                     | 一键双雷达启动脚本           |
+| `diagnose_dual_lidar.sh`                                 | 双雷达网络/端口诊断脚本        |
+
 
 #### 10.4.1.5 首次构建 / First-Time Build
 
@@ -875,12 +939,14 @@ ros2 launch livox_dual_merge dual_lidar_merge_launch.py
 
 #### 10.4.1.7 完整导航流程（双雷达） / Full Navigation Flow (Dual-LiDAR)
 
-| 终端 | 命令 |
-|------|------|
-| 1 | 网络 + 双雷达：`./test_dual_lidar.sh` 或上述手动步骤 |
-| 2 | FAST-LIO：`export LD_PRELOAD=... && ros2 launch fast_lio mapping.launch.py config_file:=mid360_dual.yaml` |
-| 3 | TF + 点云转激光 + Nav2（见 [6.2 手动启动步骤](#62-manual-launch-steps--手动启动步骤)） |
-| 4 | RViz：`ros2 run rviz2 rviz2 -d ...` |
+
+| 终端  | 命令                                                                                                       |
+| --- | -------------------------------------------------------------------------------------------------------- |
+| 1   | 网络 + 双雷达：`./test_dual_lidar.sh` 或上述手动步骤                                                                  |
+| 2   | FAST-LIO：`export LD_PRELOAD=... && ros2 launch fast_lio mapping.launch.py config_file:=mid360_dual.yaml` |
+| 3   | TF + 点云转激光 + Nav2（见 [6.2 手动启动步骤](#62-manual-launch-steps--手动启动步骤)）                                       |
+| 4   | RViz：`ros2 run rviz2 rviz2 -d ...`                                                                       |
+
 
 FAST-LIO 需使用 **mid360_dual.yaml**（双雷达 merge 输出 PointCloud2）；pointcloud_to_laserscan、Nav2 仍订阅 `/livox/lidar`、`/livox/imu` 与 `/cloud_registered`。
 
@@ -893,6 +959,7 @@ FAST-LIO 需使用 **mid360_dual.yaml**（双雷达 merge 输出 PointCloud2）�
 ```
 
 脚本会检查：
+
 - 两个网口 IP 与路由
 - 对两台雷达的 Ping
 - 驱动进程与 UDP 监听端口 (56101–56402)
@@ -909,11 +976,13 @@ FAST-LIO 需使用 **mid360_dual.yaml**（双雷达 merge 输出 PointCloud2）�
 
 **Solution / 解决方案:**
 
-| Step | Action | 说明 |
-|------|--------|------|
-| 1 | TF rotation: `body` → `base_link` pitch -50° | 静态变换旋转坐标 |
-| 2 | Use `rotate_pcd.py` to rotate saved PCD | 用rotate将PCD旋转到对应角度 |
-| 3 | Do NOT use extrinsic rotation in Point-LIO | 不要用Point-LIO的外参旋转 |
+
+| Step | Action                                       | 说明                 |
+| ---- | -------------------------------------------- | ------------------ |
+| 1    | TF rotation: `body` → `base_link` pitch -50° | 静态变换旋转坐标           |
+| 2    | Use `rotate_pcd.py` to rotate saved PCD      | 用rotate将PCD旋转到对应角度 |
+| 3    | Do NOT use extrinsic rotation in Point-LIO   | 不要用Point-LIO的外参旋转  |
+
 
 ```bash
 # TF rotation for tilted mount / 倾斜安装的TF旋转
@@ -966,6 +1035,7 @@ ros2 run nav2_map_server map_saver_cli -f my_map
 使用Nav2架构，详细参数见 `my_nav2_params.yaml`。目前实现了：
 
 ✅ **基础导航：**
+
 - 在5×5m室内场地内，机器人从起点A建图并自主导航至目标点B
 - 绕过1个固定障碍物
 - 实时避开动态障碍物
@@ -975,6 +1045,7 @@ ros2 run nav2_map_server map_saver_cli -f my_map
 - 连续多次运行无碰撞
 
 ✅ **动态避障：**
+
 - 避障距离 ≥ 0.5m
 - 巡航速度 0.26m/s
 - 连续5次运行无碰撞
@@ -986,26 +1057,28 @@ ros2 run nav2_map_server map_saver_cli -f my_map
 
 ## 11. Future Plans / 未来计划
 
-- [ ] Automatic initialization for Unitree L2 / L2自动初始化
-- [ ] IMU calibration procedure / IMU标定流程
-- [ ] Dynamic obstacle avoidance improvement / 动态避障改进
-- [ ] Battery monitoring via ROS / ROS电池监控
-- [ ] Multi-floor navigation / 多楼层导航
-- [ ] Web-based monitoring dashboard / Web监控面板
-- [ ] Automatic recovery behaviors / 自动恢复行为
-- [ ] Further LiDAR research for radar station / 根据雷达站规划进一步更换雷达
+- Automatic initialization for Unitree L2 / L2自动初始化
+- IMU calibration procedure / IMU标定流程
+- Dynamic obstacle avoidance improvement / 动态避障改进
+- Battery monitoring via ROS / ROS电池监控
+- Multi-floor navigation / 多楼层导航
+- Web-based monitoring dashboard / Web监控面板
+- Automatic recovery behaviors / 自动恢复行为
+- Further LiDAR research for radar station / 根据雷达站规划进一步更换雷达
 
 ---
 
 ## 12. References / 参考资料
 
 ### Official Documentation / 官方文档
+
 - [Livox Mid-360 Manual](https://www.livoxtech.com/mid-360/downloads)
 - [FAST-LIO GitHub](https://github.com/hku-mars/FAST_LIO)
 - [Nav2 Documentation](https://docs.nav2.org/)
 - [ROS 2 Humble Documentation](https://docs.ros.org/en/humble/)
 
 ### Related Projects / 相关项目
+
 - [Sentry Chassis Control](https://github.com/NYUSH-Robotics-Club/robomaster-control/tree/alan_sentry_radar)
 - [Livox ROS Driver 2](https://github.com/Livox-SDK/livox_ros_driver2)
 - [Point-LIO](https://github.com/hku-mars/Point-LIO)
@@ -1013,6 +1086,7 @@ ros2 run nav2_map_server map_saver_cli -f my_map
 - [pcd2pgm](https://github.com/LihanChen2004/pcd2pgm)
 
 ### Useful Tools / 实用工具
+
 - **pcl_viewer:** Point cloud visualization / 点云可视化
 - **foxglove:** Advanced ROS2 visualization / 高级ROS2可视化
 - **plotjuggler:** Real-time data plotting / 实时数据绘图
@@ -1025,7 +1099,7 @@ If you find bugs or have suggestions: / 如发现问题或有建议:
 
 1. Create an issue in the repository / 在仓库中创建issue
 2. Fork and create a pull request / Fork并创建PR
-3. Contact: Yanheng Zhu (yz11502@nyu.edu)
+3. Contact: Yanheng Zhu ([yz11502@nyu.edu](mailto:yz11502@nyu.edu))
 
 ---
 
@@ -1039,6 +1113,7 @@ This project integrates multiple open-source components: / 本项目集成多个
 - **Unitree SDK:** Unitree Robotics
 
 **Special Thanks / 特别感谢:**
+
 - NYU Shanghai Robotics Club
 - All contributors and testers
 
@@ -1046,4 +1121,4 @@ This project integrates multiple open-source components: / 本项目集成多个
 
 **Last Updated / 最后更新:** March 2025  
 **Maintained by / 维护者:** Yanheng Zhu  
-**Contact / 联系方式:** yz11502@nyu.edu
+**Contact / 联系方式:** [yz11502@nyu.edu](mailto:yz11502@nyu.edu)
