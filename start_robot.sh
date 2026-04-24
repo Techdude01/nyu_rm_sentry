@@ -63,28 +63,45 @@ ICP_MAP_OFFSET_Z="${ICP_MAP_OFFSET_Z:-0.0}"
 configure_libusb_preload() {
     local detected_path=""
     local multiarch=""
-
+    local machine_arch=""
+    local standard_paths=()
     if [ -n "${LIBUSB_PRELOAD_PATH:-}" ]; then
         detected_path="$LIBUSB_PRELOAD_PATH"
     else
-        if command -v dpkg-architecture >/dev/null 2>&1; then
-            multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+        if command -v ldconfig >/dev/null 2>&1; then
+            detected_path="$(ldconfig -p 2>/dev/null | awk '/libusb-1\.0\.so\.0/{print $NF; exit}')"
         fi
-
-        if [ -n "$multiarch" ] && [ -f "/lib/$multiarch/libusb-1.0.so.0" ]; then
-            detected_path="/lib/$multiarch/libusb-1.0.so.0"
-        else
-            case "$(uname -m)" in
-                x86_64|amd64)
-                    detected_path="/lib/x86_64-linux-gnu/libusb-1.0.so.0"
-                    ;;
-                aarch64|arm64)
-                    detected_path="/lib/aarch64-linux-gnu/libusb-1.0.so.0"
-                    ;;
-            esac
+        if [ -z "$detected_path" ] && command -v dpkg-architecture >/dev/null 2>&1; then
+            multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+            if [ -n "$multiarch" ]; then
+                standard_paths+=("/lib/$multiarch/libusb-1.0.so.0")
+                standard_paths+=("/usr/lib/$multiarch/libusb-1.0.so.0")
+            fi
+        fi
+        machine_arch="$(uname -m)"
+        case "$machine_arch" in
+            x86_64|amd64)
+                standard_paths+=("/lib/x86_64-linux-gnu/libusb-1.0.so.0")
+                standard_paths+=("/usr/lib/x86_64-linux-gnu/libusb-1.0.so.0")
+                ;;
+            aarch64|arm64)
+                standard_paths+=("/lib/aarch64-linux-gnu/libusb-1.0.so.0")
+                standard_paths+=("/usr/lib/aarch64-linux-gnu/libusb-1.0.so.0")
+                ;;
+        esac
+        standard_paths+=("/lib64/libusb-1.0.so.0")
+        standard_paths+=("/usr/lib64/libusb-1.0.so.0")
+        standard_paths+=("/lib/libusb-1.0.so.0")
+        standard_paths+=("/usr/lib/libusb-1.0.so.0")
+        if [ -z "$detected_path" ]; then
+            for candidate_path in "${standard_paths[@]}"; do
+                if [ -f "$candidate_path" ]; then
+                    detected_path="$candidate_path"
+                    break
+                fi
+            done
         fi
     fi
-
     if [ -n "$detected_path" ] && [ -f "$detected_path" ]; then
         export LD_PRELOAD="$detected_path"
         echo ">>> Using libusb preload: $LD_PRELOAD"

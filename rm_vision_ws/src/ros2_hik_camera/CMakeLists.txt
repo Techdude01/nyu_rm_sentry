@@ -21,21 +21,26 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME} PUBLIC hikSDK/include)
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
-  target_link_directories(${PROJECT_NAME} PUBLIC hikSDK/lib/amd64)
-  install(
-    DIRECTORY hikSDK/lib/amd64/
-    DESTINATION lib
-  )
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-  target_link_directories(${PROJECT_NAME} PUBLIC hikSDK/lib/arm64)
-  install(
-    DIRECTORY hikSDK/lib/arm64/
-    DESTINATION lib
-  )
-else()
-  message(FATAL_ERROR "Unsupport host system architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}!")
+set(HIK_SDK_ARCH_DIR "")
+set(HIK_SDK_LIB_DIR "" CACHE PATH "Override Hik SDK library directory")
+if(HIK_SDK_LIB_DIR)
+  set(HIK_SDK_ARCH_DIR "${HIK_SDK_LIB_DIR}")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)$")
+  set(HIK_SDK_ARCH_DIR "${CMAKE_CURRENT_SOURCE_DIR}/hikSDK/lib/amd64")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+  set(HIK_SDK_ARCH_DIR "${CMAKE_CURRENT_SOURCE_DIR}/hikSDK/lib/arm64")
 endif()
+if(HIK_SDK_ARCH_DIR STREQUAL "")
+  message(FATAL_ERROR "Unsupported host system architecture: ${CMAKE_SYSTEM_PROCESSOR}. Set HIK_SDK_LIB_DIR to a compatible Hik SDK library path.")
+endif()
+if(NOT EXISTS "${HIK_SDK_ARCH_DIR}")
+  message(FATAL_ERROR "Hik SDK library directory does not exist: ${HIK_SDK_ARCH_DIR}")
+endif()
+target_link_directories(${PROJECT_NAME} PUBLIC "${HIK_SDK_ARCH_DIR}")
+install(
+  DIRECTORY "${HIK_SDK_ARCH_DIR}/"
+  DESTINATION lib
+)
 
 target_link_libraries(${PROJECT_NAME}
   FormatConversion
